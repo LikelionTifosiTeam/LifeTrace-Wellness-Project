@@ -6,6 +6,10 @@ AfterGlow는 미용 시술을 받은 사람이 **시술 다음 날부터 90일 �
 
 ---
 
+## 바로 보기
+
+**<https://life-trace-wellness-project.vercel.app>**
+
 ## 시연 계정
 
 두 관점을 모두 확인하실 수 있도록 계정 2개를 제공합니다.
