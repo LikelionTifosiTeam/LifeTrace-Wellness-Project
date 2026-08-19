@@ -21,8 +21,7 @@ export default function SignupPage() {
     const next: typeof errors = {};
     if (!name.trim()) next.name = '이름을 입력해 주세요.';
     if (!email.includes('@')) next.email = '이메일 형식을 확인해 주세요.';
-    if (password.length > 0 && password.length < 6)
-      next.form = '비밀번호는 6자 이상이어야 합니다.';
+    if (password.length < 6) next.form = '비밀번호는 6자 이상이어야 합니다.';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 

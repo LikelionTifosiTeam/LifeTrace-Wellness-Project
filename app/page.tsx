@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
-import { DemoEntryButton } from '@/components/common/DemoEntryButton';
 
 const problems = [
   {
@@ -109,7 +108,11 @@ export default function LandingPage() {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <DemoEntryButton />
+            <Link href="/login">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                테스트 계정으로 둘러보기
+              </Button>
+            </Link>
           </div>
         </section>
 

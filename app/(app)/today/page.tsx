@@ -175,7 +175,7 @@ export default function TodayPage() {
               <div className="text-center">
                 <Moon className="w-4 h-4 text-accent-600 mx-auto mb-1.5" />
                 <p className="text-lg font-extrabold text-slate-900 leading-none">
-                  {data.wearable ? data.wearable.sleepHours.toFixed(1) : '—'}
+                  {data.vitals ? data.vitals.sleepHours.toFixed(1) : '—'}
                   <span className="text-xs font-medium text-slate-400 ml-0.5">h</span>
                 </p>
                 <p className="text-[11px] text-slate-500 mt-1">어젯밤 수면</p>
@@ -183,10 +183,10 @@ export default function TodayPage() {
               <div className="text-center">
                 <Flame className="w-4 h-4 text-brand-600 mx-auto mb-1.5" />
                 <p className="text-lg font-extrabold text-slate-900 leading-none">
-                  {data.wearable ? data.wearable.hrvMs : '—'}
-                  <span className="text-xs font-medium text-slate-400 ml-0.5">ms</span>
+                  {data.vitals ? data.vitals.stressLevel : '—'}
+                  <span className="text-xs font-medium text-slate-400 ml-0.5">/10</span>
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1">HRV</p>
+                <p className="text-[11px] text-slate-500 mt-1">스트레스</p>
               </div>
               <div className="text-center">
                 <Sun className="w-4 h-4 text-amber-500 mx-auto mb-1.5" />

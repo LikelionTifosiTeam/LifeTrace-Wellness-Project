@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Flag, Settings, Stethoscope, Watch } from 'lucide-react';
+import { ChevronRight, Flag, Settings, Stethoscope } from 'lucide-react';
 import { MainShell } from '@/components/common/MainShell';
 import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
 import { Card } from '@/components/ui/card';
@@ -130,13 +130,6 @@ export default function ProfilePage() {
           )}
 
           <Card className="p-0 overflow-hidden divide-y divide-slate-100">
-            <div className="flex items-center gap-3 p-4">
-              <Watch className="w-4 h-4 text-slate-400 shrink-0" />
-              <span className="text-sm text-slate-700 flex-1">웨어러블 연동</span>
-              <Badge variant={user.connectedWearable ? 'success' : 'neutral'}>
-                {user.connectedWearable ? '연결됨' : '미연결'}
-              </Badge>
-            </div>
             <div className="flex items-center gap-3 p-4">
               <Stethoscope className="w-4 h-4 text-slate-400 shrink-0" />
               <span className="text-sm text-slate-700 flex-1">클리닉 기록 공유</span>

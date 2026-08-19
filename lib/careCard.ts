@@ -16,7 +16,7 @@ import {
   DailyCheckin,
   EnvironmentSnapshot,
   RecoveryPhase,
-  WearableSnapshot,
+  DailyVitals,
 } from '@/types';
 import {
   SYMPTOM_LABELS,
@@ -35,7 +35,7 @@ export interface CareCardInput {
   protocol: CareProtocol;
   phase: RecoveryPhase;
   yesterdayCheckin: DailyCheckin | null;
-  wearables: WearableSnapshot[];
+  vitals: DailyVitals[];
   environment: EnvironmentSnapshot;
 }
 
@@ -45,7 +45,7 @@ export interface CareCardInput {
 
 export function extractSignals(input: CareCardInput): CareSignal[] {
   const signals: CareSignal[] = [];
-  const latest = input.wearables[input.wearables.length - 1];
+  const latest = input.vitals[input.vitals.length - 1];
 
   if (latest) {
     signals.push({
@@ -54,10 +54,15 @@ export function extractSignals(input: CareCardInput): CareSignal[] {
       impact: latest.sleepHours < 6 ? '주의' : latest.sleepHours >= 7.5 ? '긍정' : '중립',
     });
     signals.push({
-      key: 'hrv',
-      label: `HRV ${latest.hrvMs}ms`,
-      impact: latest.hrvMs < 45 ? '주의' : latest.hrvMs > 58 ? '긍정' : '중립',
+      key: 'stress',
+      label: `스트레스 ${latest.stressLevel}/10`,
+      impact: latest.stressLevel >= 7 ? '주의' : latest.stressLevel <= 3 ? '긍정' : '중립',
     });
+    if (latest.alcohol) {
+      signals.push({ key: 'alcohol', label: '어제 음주 있음', impact: '주의' });
+    }
+  } else {
+    signals.push({ key: 'vitals-missing', label: '어제 컨디션 기록 없음', impact: '중립' });
   }
 
   signals.push({
@@ -157,8 +162,8 @@ function composeHeadline(input: CareCardInput, signals: CareSignal[]): string {
 }
 
 function composeRationale(input: CareCardInput, signals: CareSignal[]): string {
-  const modifier = computeRecoveryModifier(input.wearables);
-  const bodyKeys = ['sleep', 'hrv'];
+  const modifier = computeRecoveryModifier(input.vitals);
+  const bodyKeys = ['sleep', 'stress', 'alcohol'];
   const bodyAttention = signals
     .filter((s) => s.impact === '주의' && bodyKeys.includes(s.key))
     .map((s) => s.label);
@@ -176,7 +181,7 @@ function composeRationale(input: CareCardInput, signals: CareSignal[]): string {
     );
   } else if (modifier.factor > 1) {
     parts.push(
-      `수면과 HRV가 양호해 회복 속도 기대치를 표준 대비 ${Math.round(
+      `수면과 스트레스가 양호해 회복 속도 기대치를 표준 대비 ${Math.round(
         modifier.factor * 100
       )}%로 잡았습니다.`
     );

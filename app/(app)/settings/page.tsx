@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Bell, Check, Download, Shield, Stethoscope, Trash2, Watch } from 'lucide-react';
+import { Bell, Check, Download, Shield, Stethoscope, Trash2 } from 'lucide-react';
 import { MainShell } from '@/components/common/MainShell';
 import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
-import { DataSourceBadge } from '@/components/common/DataSourceBadge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -111,8 +110,7 @@ export default function SettingsPage() {
 
       {!isLoading && !isError && user && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <DataSourceBadge />
+          <div className="flex items-center justify-end gap-2">
             {savedAt && !isSaving && (
               <span className="flex items-center gap-1 text-xs text-brand-700 font-semibold">
                 <Check className="w-3.5 h-3.5" />
@@ -168,25 +166,6 @@ export default function SettingsPage() {
                 disabled={isSaving}
                 onChange={(v) => save({ clinicSharingConsent: v })}
                 label="클리닉 공유"
-              />
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-1">
-              <Watch className="w-4 h-4 text-slate-400" />
-              웨어러블 연동
-            </h2>
-            <p className="text-xs text-slate-500 mb-4">
-              수면과 HRV만 읽어옵니다. 위치·운동 상세 기록은 수집하지 않습니다.
-            </p>
-            <div className="flex items-center gap-3 py-2">
-              <span className="text-sm text-slate-700 flex-1">Apple 건강 연동</span>
-              <Toggle
-                checked={Boolean(user.connectedWearable)}
-                disabled={isSaving}
-                onChange={(v) => save({ connectedWearable: v ? 'apple-health' : null })}
-                label="웨어러블 연동"
               />
             </div>
           </Card>

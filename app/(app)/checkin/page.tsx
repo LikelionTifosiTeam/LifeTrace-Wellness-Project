@@ -18,8 +18,9 @@ import { checkinService, CheckinResult } from '@/services/checkin';
 import { journeyService } from '@/services/journey';
 import { storageService } from '@/services/storage';
 import { SYMPTOM_LABELS, SYMPTOM_ORDER, applyModifier, computeRecoveryModifier } from '@/lib/recovery';
-import { symptomMetaMap, mockWearables } from '@/mock/data';
-import { TodayScreenData } from '@/types';
+import { vitalsService } from '@/services/vitals';
+import { symptomMetaMap } from '@/mock/reference';
+import { DailyVitals, TodayScreenData } from '@/types';
 
 export default function CheckinPage() {
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function CheckinPage() {
   } = useCheckinStore();
 
   const [context, setContext] = useState<TodayScreenData | null>(null);
+  const [vitalsList, setVitalsList] = useState<DailyVitals[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +70,12 @@ export default function CheckinPage() {
     setIsLoading(true);
     setIsError(false);
     try {
-      setContext(await journeyService.getToday());
+      const [today, vitals] = await Promise.all([
+        journeyService.getToday(),
+        vitalsService.getVitals(),
+      ]);
+      setContext(today);
+      setVitalsList(vitals.vitals);
       begin();
     } catch {
       setIsError(true);
@@ -87,7 +94,7 @@ export default function CheckinPage() {
   const isSummaryStep = step === SYMPTOM_ORDER.length;
   const currentKey = SYMPTOM_ORDER[step];
 
-  const modifier = computeRecoveryModifier(mockWearables);
+  const modifier = computeRecoveryModifier(vitalsList);
   const expectedToday =
     context && currentKey
       ? applyModifier(
@@ -102,7 +109,7 @@ export default function CheckinPage() {
       const res = await checkinService.submitCheckin({
         symptoms,
         moodNote: moodNote.trim() || undefined,
-        photoUrl: photo?.path,
+        photoPath: photo?.path,
         followedRestrictions,
         durationSeconds: elapsedSeconds(),
       });

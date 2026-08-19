@@ -3,7 +3,12 @@
 --
 -- 시술명 · 시술일 · 클리닉 정보는 개인정보보호법상 '건강에 관한 민감정보'다.
 -- 모든 테이블은 RLS를 켜고, 본인 행에만 접근 가능하도록 강제한다.
--- 클리닉 공유는 사용자가 명시적으로 동의하고 이탈이 감지된 건에 한해서만 열린다.
+--
+-- 클리닉(의료진) 계정은 예외적으로 아래 조건을 '모두' 만족할 때만 환자 기록을 본다.
+--   1) 그 클리닉 소속으로 등록되어 있고 (clinic_members)
+--   2) 환자가 공유에 동의했고 (profiles.clinic_sharing_consent)
+--   3) 회복 곡선을 벗어나 공유된 알림에 한해서 (recovery_alerts.shared_with_clinic)
+-- 평상시 기록은 의료진도 볼 수 없다.
 -- ---------------------------------------------------------------------------
 
 create extension if not exists "pgcrypto";
@@ -16,11 +21,51 @@ create type procedure_category as enum (
   '레이저', '리프팅', '주사', '필러', '스킨부스터', '필링', '재생관리'
 );
 
-create type recovery_phase_key as enum ('acute', 'stabilizing', 'improving', 'settling');
 create type journey_status as enum ('on-track', 'watch', 'off-track', 'completed');
 create type alert_level as enum ('info', 'watch', 'urgent');
-create type restriction_severity as enum ('critical', 'caution', 'ok-soon');
-create type wearable_source as enum ('apple-health', 'galaxy-watch', 'fitbit', 'manual');
+create type clinic_role as enum ('practitioner', 'admin');
+
+-- ---------------------------------------------------------------------------
+-- 클리닉 & 소속 의료진
+-- ---------------------------------------------------------------------------
+
+create table public.clinics (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table public.clinic_members (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  clinic_id uuid not null references public.clinics (id) on delete cascade,
+  display_name text not null,
+  role clinic_role not null default 'practitioner',
+  created_at timestamptz not null default now()
+);
+
+create index clinic_members_clinic_idx on public.clinic_members (clinic_id);
+
+-- 정책 안에서 clinic_members를 직접 조회하면 RLS 재귀가 생긴다.
+-- security definer 함수로 한 번 감싸 재귀를 끊는다.
+create or replace function public.current_clinic_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select clinic_id from public.clinic_members where user_id = auth.uid();
+$$;
+
+create or replace function public.is_clinic_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.clinic_members where user_id = auth.uid());
+$$;
 
 -- ---------------------------------------------------------------------------
 -- 프로필 (auth.users 확장)
@@ -33,7 +78,6 @@ create table public.profiles (
   birth_year int,
   gender text check (gender in ('male', 'female', 'other', 'prefer_not_to_say')),
   checkin_reminder_time time not null default '21:30',
-  connected_wearable wearable_source,
   -- 기본값은 반드시 false. 동의는 명시적으로만 켜진다.
   clinic_sharing_consent boolean not null default false,
   created_at timestamptz not null default now()
@@ -51,8 +95,6 @@ create table public.care_protocols (
   downtime_days int not null,
   result_visible_from_day int not null,
   clinic_note text not null default '',
-  -- phases / expected_curves / restrictions / recommendations 는
-  -- types/index.ts 의 CareProtocol 구조를 그대로 담는다.
   phases jsonb not null,
   expected_curves jsonb not null,
   restrictions jsonb not null default '[]'::jsonb,
@@ -62,16 +104,6 @@ create table public.care_protocols (
 
 comment on column public.care_protocols.expected_curves is
   '증상키 -> 길이 total_recovery_days 의 number[] (0~4). lib/recovery.ts#buildExpectedCurve 와 동일 규칙';
-
--- ---------------------------------------------------------------------------
--- 클리닉
--- ---------------------------------------------------------------------------
-
-create table public.clinics (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  created_at timestamptz not null default now()
-);
 
 -- ---------------------------------------------------------------------------
 -- 회복 여정 (시술 1건 = 여정 1개)
@@ -93,18 +125,7 @@ create table public.recovery_journeys (
 );
 
 create index recovery_journeys_user_idx on public.recovery_journeys (user_id, procedure_date desc);
-
--- currentDay 는 저장하지 않고 항상 서버 시간(KST)으로 계산한다.
-create or replace function public.journey_current_day(journey public.recovery_journeys)
-returns int
-language sql
-stable
-as $$
-  select greatest(
-    0,
-    (timezone('Asia/Seoul', now()))::date - journey.procedure_date
-  )::int;
-$$;
+create index recovery_journeys_clinic_idx on public.recovery_journeys (clinic_id);
 
 -- ---------------------------------------------------------------------------
 -- 데일리 체크인
@@ -133,19 +154,17 @@ create table public.daily_checkins (
 create index daily_checkins_journey_idx on public.daily_checkins (journey_id, day);
 
 -- ---------------------------------------------------------------------------
--- 웨어러블 / 환경 스냅샷
+-- 데일리 컨디션 (수면 등) — 웹에서 사용자가 직접 입력한다
 -- ---------------------------------------------------------------------------
 
-create table public.wearable_snapshots (
+create table public.daily_vitals (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
   date date not null,
-  source wearable_source not null default 'manual',
-  sleep_hours numeric(4, 2) not null,
-  sleep_quality smallint,
-  hrv_ms smallint,
-  resting_hr smallint,
-  steps int,
+  sleep_hours numeric(4, 2) not null check (sleep_hours >= 0 and sleep_hours <= 24),
+  -- 0~10 자가 보고. 웨어러블 없이도 회복 속도 보정이 가능하도록 설계한 축이다.
+  stress_level smallint check (stress_level between 0 and 10),
+  alcohol boolean not null default false,
   created_at timestamptz not null default now(),
   unique (user_id, date)
 );
@@ -203,9 +222,12 @@ create table public.recovery_alerts (
   unique (journey_id, date)
 );
 
+create index recovery_alerts_shared_idx on public.recovery_alerts (shared_with_clinic, day desc);
+
 create table public.clinic_responses (
   id uuid primary key default gen_random_uuid(),
   alert_id uuid not null unique references public.recovery_alerts (id) on delete cascade,
+  responder_id uuid references auth.users (id),
   practitioner_name text not null,
   message text not null,
   suggested_visit boolean not null default false,
@@ -260,7 +282,7 @@ create table public.journey_archives (
 alter table public.profiles              enable row level security;
 alter table public.recovery_journeys     enable row level security;
 alter table public.daily_checkins        enable row level security;
-alter table public.wearable_snapshots    enable row level security;
+alter table public.daily_vitals          enable row level security;
 alter table public.care_cards            enable row level security;
 alter table public.recovery_alerts       enable row level security;
 alter table public.clinic_responses      enable row level security;
@@ -268,6 +290,7 @@ alter table public.journey_archives      enable row level security;
 alter table public.care_protocols        enable row level security;
 alter table public.environment_snapshots enable row level security;
 alter table public.clinics               enable row level security;
+alter table public.clinic_members        enable row level security;
 
 -- 본인 행만 접근
 create policy "own profile" on public.profiles
@@ -279,7 +302,7 @@ create policy "own journeys" on public.recovery_journeys
 create policy "own checkins" on public.daily_checkins
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-create policy "own wearables" on public.wearable_snapshots
+create policy "own vitals" on public.daily_vitals
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "own care cards" on public.care_cards
@@ -291,7 +314,6 @@ create policy "own alerts" on public.recovery_alerts
 create policy "own archives" on public.journey_archives
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- 클리닉 응답은 내 알림에 달린 것만 읽는다 (쓰기는 서버 역할 키로만)
 create policy "read own clinic responses" on public.clinic_responses
   for select using (
     exists (
@@ -310,6 +332,78 @@ create policy "read environments" on public.environment_snapshots
 create policy "read clinics" on public.clinics
   for select to authenticated using (true);
 
+create policy "read own membership" on public.clinic_members
+  for select using (user_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- 의료진 전용 정책 — 공유된 알림에 한정
+-- ---------------------------------------------------------------------------
+
+-- 공유된 알림만 본다. 미공유 알림은 의료진에게도 보이지 않는다.
+create policy "clinic reads shared alerts" on public.recovery_alerts
+  for select using (
+    shared_with_clinic
+    and public.is_clinic_staff()
+    and exists (
+      select 1 from public.recovery_journeys j
+      where j.id = recovery_alerts.journey_id
+        and j.clinic_id = public.current_clinic_id()
+    )
+  );
+
+-- 알림이 걸린 여정의 기본 정보만 본다 (환자 이름/연락처는 포함되지 않는다).
+create policy "clinic reads shared journeys" on public.recovery_journeys
+  for select using (
+    public.is_clinic_staff()
+    and clinic_id = public.current_clinic_id()
+    and exists (
+      select 1 from public.recovery_alerts a
+      where a.journey_id = recovery_journeys.id and a.shared_with_clinic
+    )
+  );
+
+-- 공유된 알림 전후 3일 체크인만 본다. 전체 이력은 열리지 않는다.
+create policy "clinic reads shared checkins" on public.daily_checkins
+  for select using (
+    public.is_clinic_staff()
+    and exists (
+      select 1
+      from public.recovery_alerts a
+      join public.recovery_journeys j on j.id = a.journey_id
+      where a.journey_id = daily_checkins.journey_id
+        and a.shared_with_clinic
+        and j.clinic_id = public.current_clinic_id()
+        and daily_checkins.day between a.day - 3 and a.day
+    )
+  );
+
+-- 의료진은 공유된 알림에만 답변을 남긴다.
+create policy "clinic writes responses" on public.clinic_responses
+  for insert to authenticated
+  with check (
+    public.is_clinic_staff()
+    and exists (
+      select 1
+      from public.recovery_alerts a
+      join public.recovery_journeys j on j.id = a.journey_id
+      where a.id = clinic_responses.alert_id
+        and a.shared_with_clinic
+        and j.clinic_id = public.current_clinic_id()
+    )
+  );
+
+create policy "clinic reads responses" on public.clinic_responses
+  for select using (
+    public.is_clinic_staff()
+    and exists (
+      select 1
+      from public.recovery_alerts a
+      join public.recovery_journeys j on j.id = a.journey_id
+      where a.id = clinic_responses.alert_id
+        and j.clinic_id = public.current_clinic_id()
+    )
+  );
+
 -- ---------------------------------------------------------------------------
 -- 회원가입 시 프로필 자동 생성
 -- ---------------------------------------------------------------------------
@@ -326,7 +420,8 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1))
-  );
+  )
+  on conflict (id) do nothing;
   return new;
 end;
 $$;

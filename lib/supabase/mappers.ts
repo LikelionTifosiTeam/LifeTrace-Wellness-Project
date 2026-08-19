@@ -6,6 +6,7 @@
 
 import {
   DailyCheckin,
+  DailyVitals,
   EnvironmentSnapshot,
   JourneyArchiveEntry,
   ProcedureCategory,
@@ -13,19 +14,29 @@ import {
   RecoveryJourney,
   SymptomKey,
   User,
-  WearableSnapshot,
 } from '@/types';
 import { daysBetween } from '@/lib/utils';
 import type {
   ClinicResponseRow,
   DailyCheckinRow,
+  DailyVitalsRow,
   EnvironmentSnapshotRow,
   JourneyArchiveRow,
   ProfileRow,
   RecoveryAlertRow,
   RecoveryJourneyRow,
-  WearableSnapshotRow,
 } from './database.types';
+
+/**
+ * PostgREST 중첩 관계 정규화.
+ *
+ * clinic_responses.alert_id에 UNIQUE가 걸려 있어 PostgREST가 이 관계를 to-one으로
+ * 판단하고 배열이 아닌 객체를 돌려준다. 스키마 변경에 흔들리지 않도록 양쪽을 모두 받는다.
+ */
+export function firstOf<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
 
 export function toUser(row: ProfileRow): User {
   return {
@@ -35,7 +46,6 @@ export function toUser(row: ProfileRow): User {
     birthYear: row.birth_year ?? undefined,
     gender: (row.gender as User['gender']) ?? undefined,
     checkinReminderTime: row.checkin_reminder_time.slice(0, 5),
-    connectedWearable: row.connected_wearable ?? undefined,
     clinicSharingConsent: row.clinic_sharing_consent,
     createdAt: row.created_at.slice(0, 10),
   };
@@ -73,7 +83,7 @@ export function toCheckin(row: DailyCheckinRow, photoUrl?: string): DailyCheckin
       peeling: row.peeling,
       tightness: row.tightness,
     },
-    photoUrl: photoUrl ?? undefined,
+    photoUrl: photoUrl ?? row.photo_path ?? undefined,
     moodNote: row.mood_note ?? undefined,
     followedRestrictions: row.followed_restrictions,
     durationSeconds: row.duration_seconds,
@@ -81,45 +91,12 @@ export function toCheckin(row: DailyCheckinRow, photoUrl?: string): DailyCheckin
   };
 }
 
-export function fromCheckin(
-  input: {
-    journeyId: string;
-    userId: string;
-    date: string;
-    day: number;
-    symptoms: Record<SymptomKey, number>;
-    moodNote?: string;
-    photoPath?: string;
-    followedRestrictions: boolean;
-    durationSeconds: number;
-  }
-): Omit<DailyCheckinRow, 'id' | 'created_at'> {
-  return {
-    journey_id: input.journeyId,
-    user_id: input.userId,
-    date: input.date,
-    day: input.day,
-    swelling: input.symptoms.swelling,
-    redness: input.symptoms.redness,
-    pain: input.symptoms.pain,
-    peeling: input.symptoms.peeling,
-    tightness: input.symptoms.tightness,
-    photo_path: input.photoPath ?? null,
-    mood_note: input.moodNote ?? null,
-    followed_restrictions: input.followedRestrictions,
-    duration_seconds: input.durationSeconds,
-  };
-}
-
-export function toWearable(row: WearableSnapshotRow): WearableSnapshot {
+export function toVitals(row: DailyVitalsRow): DailyVitals {
   return {
     date: row.date,
-    source: row.source,
     sleepHours: Number(row.sleep_hours),
-    sleepQuality: row.sleep_quality ?? 0,
-    hrvMs: row.hrv_ms ?? 0,
-    restingHr: row.resting_hr ?? 0,
-    steps: row.steps ?? 0,
+    stressLevel: row.stress_level ?? 5,
+    alcohol: row.alcohol,
   };
 }
 
@@ -145,7 +122,7 @@ export function toAlert(
     level: row.level,
     title: row.title,
     detail: row.detail,
-    triggeredBy: row.triggered_by.map((t) => ({
+    triggeredBy: (row.triggered_by ?? []).map((t) => ({
       symptom: t.symptom as SymptomKey,
       expected: t.expected,
       actual: t.actual,
@@ -174,7 +151,7 @@ export function toArchiveEntry(
     clinicName: journey.clinic_name,
     procedureDate: journey.procedure_date,
     completedDay: row.completed_day,
-    finalStatus: journey.status,
+    finalStatus: 'completed',
     satisfactionScore: row.satisfaction_score ?? undefined,
     beforePhotoUrl: row.before_photo_path ?? undefined,
     afterPhotoUrl: row.after_photo_path ?? undefined,

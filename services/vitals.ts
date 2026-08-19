@@ -1,157 +1,95 @@
-import { RecoveryCorrelation, VitalsScreenData, WearableSnapshot, WearableSource } from '@/types';
-import {
-  mockCorrelations,
-  mockEnvironments,
-  mockUser,
-  mockWearables,
-} from '@/mock/data';
+'use client';
+
+import { DailyVitals, RecoveryCorrelation, VitalsScreenData } from '@/types';
+import type { DailyVitalsRow } from '@/lib/supabase/database.types';
+import { toVitals } from '@/lib/supabase/mappers';
 import { pearson } from '@/lib/recovery';
-import { isSupabase } from '@/lib/env';
-import { request } from './client';
-import { session } from './session';
+import { correlationTemplates } from '@/mock/reference';
+import { todayKST } from '@/lib/utils';
+import { ApiError, db, requireUserId } from './supabase';
+import { fetchCurrentJourneyRow, fetchEnvironments, fetchVitals } from './journey';
+import { checkinService } from './checkin';
 
-/**
- * 웨어러블 스냅샷 저장소.
- *
- * 웹에서는 Apple HealthKit / Galaxy Health에 직접 접근할 수 없다.
- * 따라서 두 경로를 모두 지원한다.
- *  1) 연동(네이티브 앱/헬스 커넥트) — 데모에서는 시드 데이터로 대체
- *  2) 수동 입력 — 연동 없이도 회복 속도 보정이 동작하도록
- */
-let snapshots: WearableSnapshot[] = session.isDemoSeed ? [...mockWearables] : [];
-let syncedVersion = session.seedVersion;
-
-function sync() {
-  if (syncedVersion === session.seedVersion) return;
-  syncedVersion = session.seedVersion;
-  snapshots = session.isDemoSeed ? [...mockWearables] : [];
-}
-
-export const wearableStore = {
-  all(): WearableSnapshot[] {
-    sync();
-    return [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
-  },
-  upsert(snapshot: WearableSnapshot) {
-    sync();
-    const i = snapshots.findIndex((s) => s.date === snapshot.date);
-    if (i >= 0) snapshots[i] = snapshot;
-    else snapshots.push(snapshot);
-  },
-};
-
-/** 실제 기록으로 상관계수를 다시 계산한다. 고정 숫자를 보여주지 않는다. */
-function recomputeCorrelations(
-  checkins: { day: number; symptoms: { swelling: number; tightness: number } }[]
-): RecoveryCorrelation[] {
-  const wearables = wearableStore.all();
-  const sleepPairs: [number, number][] = [];
-  const humidityPairs: [number, number][] = [];
-
-  checkins.forEach((c) => {
-    const wearable = wearables[c.day - 1];
-    if (wearable) sleepPairs.push([wearable.sleepHours, c.symptoms.swelling]);
-    const env = mockEnvironments[c.day];
-    if (env) humidityPairs.push([env.humidity, c.symptoms.tightness]);
-  });
-
-  const sleepCoef = pearson(
-    sleepPairs.map((p) => p[0]),
-    sleepPairs.map((p) => p[1])
-  );
-  const humidityCoef = pearson(
-    humidityPairs.map((p) => p[0]),
-    humidityPairs.map((p) => p[1])
-  );
-
-  return mockCorrelations.map((c) => {
-    if (c.id === 'corr-001') {
-      return { ...c, coefficient: sleepCoef, sampleDays: sleepPairs.length };
-    }
-    if (c.id === 'corr-003') {
-      return { ...c, coefficient: humidityCoef, sampleDays: humidityPairs.length };
-    }
-    return c;
-  });
-}
-
-export interface ManualVitalsInput {
+export interface DailyVitalsInput {
   date: string;
   sleepHours: number;
-  restingHr?: number;
-  hrvMs?: number;
+  stressLevel: number;
+  alcohol: boolean;
 }
 
 export const vitalsService = {
   async getVitals(): Promise<VitalsScreenData> {
-    if (isSupabase) {
-      const { supabaseRepo } = await import('./supabase-repo');
-      return supabaseRepo.getVitals();
-    }
-    return request({
-      path: '/vitals',
-      latency: 450,
-      mock: async () => {
-        const { checkinStore } = await import('./checkin');
-        return {
-          wearables: wearableStore.all(),
-          environments: mockEnvironments,
-          correlations: recomputeCorrelations(checkinStore.all()),
-          connected: Boolean(mockUser.connectedWearable) && wearableStore.all().length > 0,
-          source: mockUser.connectedWearable,
-        };
-      },
+    const today = todayKST();
+    const userId = await requireUserId();
+    const journeyRow = await fetchCurrentJourneyRow(userId);
+
+    const [vitals, environments, checkins] = await Promise.all([
+      fetchVitals(userId, journeyRow.procedure_date),
+      fetchEnvironments(journeyRow.procedure_date),
+      checkinService.getCheckins(),
+    ]);
+
+    // 상관계수는 매번 실제 기록으로 다시 계산한다. 고정 숫자를 보여주지 않는다.
+    const byDate = new Map(vitals.map((v) => [v.date, v]));
+    const envByDate = new Map(environments.map((e) => [e.date, e]));
+
+    const sleepPairs: [number, number][] = [];
+    const stressPairs: [number, number][] = [];
+    const humidityPairs: [number, number][] = [];
+
+    checkins.forEach((c) => {
+      const prevDate = vitals[c.day - 1]?.date;
+      const prev = prevDate ? byDate.get(prevDate) : undefined;
+      if (prev) {
+        sleepPairs.push([prev.sleepHours, c.symptoms.swelling]);
+        stressPairs.push([prev.stressLevel, c.symptoms.redness]);
+      }
+      const env = envByDate.get(c.date);
+      if (env) humidityPairs.push([env.humidity, c.symptoms.tightness]);
     });
+
+    const build = (
+      template: RecoveryCorrelation,
+      pairs: [number, number][]
+    ): RecoveryCorrelation => ({
+      ...template,
+      coefficient: pearson(
+        pairs.map((p) => p[0]),
+        pairs.map((p) => p[1])
+      ),
+      sampleDays: pairs.length,
+    });
+
+    return {
+      vitals,
+      environments,
+      correlations: [
+        build(correlationTemplates.sleep, sleepPairs),
+        build(correlationTemplates.stress, stressPairs),
+        build(correlationTemplates.humidity, humidityPairs),
+      ],
+      hasToday: vitals.some((v) => v.date === today),
+    };
   },
 
-  async connectWearable(
-    source: WearableSource
-  ): Promise<{ connected: true; source: WearableSource }> {
-    if (isSupabase) {
-      const { supabaseRepo } = await import('./supabase-repo');
-      return supabaseRepo.connectWearable(source);
-    }
-    return request({
-      path: '/vitals/connect',
-      method: 'POST',
-      body: { source },
-      latency: 900,
-      mock: () => {
-        mockUser.connectedWearable = source;
-        // 연동이 켜지면 시드 스냅샷을 불러온 것으로 본다.
-        if (wearableStore.all().length === 0) {
-          mockWearables.forEach((w) => wearableStore.upsert({ ...w, source }));
-        }
-        return { connected: true as const, source };
-      },
-    });
-  },
-
-  /** 웨어러블 없이 수면만 직접 입력해도 회복 속도 보정이 동작한다. */
-  async saveManualVitals(input: ManualVitalsInput): Promise<WearableSnapshot> {
-    if (isSupabase) {
-      const { supabaseRepo } = await import('./supabase-repo');
-      return supabaseRepo.saveManualVitals(input);
-    }
-    return request({
-      path: '/vitals/manual',
-      method: 'POST',
-      body: input,
-      latency: 400,
-      mock: () => {
-        const snapshot: WearableSnapshot = {
+  /** 하루 컨디션 저장. 웨어러블 없이 웹에서 직접 입력한다. */
+  async saveVitals(input: DailyVitalsInput): Promise<DailyVitals> {
+    const userId = await requireUserId();
+    const { data, error } = await db()
+      .from('daily_vitals')
+      .upsert(
+        {
+          user_id: userId,
           date: input.date,
-          source: 'manual',
-          sleepHours: input.sleepHours,
-          sleepQuality: Math.round(Math.min(100, input.sleepHours * 12)),
-          hrvMs: input.hrvMs ?? 0,
-          restingHr: input.restingHr ?? 0,
-          steps: 0,
-        };
-        wearableStore.upsert(snapshot);
-        mockUser.connectedWearable = mockUser.connectedWearable ?? 'manual';
-        return snapshot;
-      },
-    });
+          sleep_hours: input.sleepHours,
+          stress_level: input.stressLevel,
+          alcohol: input.alcohol,
+        },
+        { onConflict: 'user_id,date' }
+      )
+      .select('*')
+      .single<DailyVitalsRow>();
+    if (error || !data) throw new ApiError('QUERY_FAILED', '컨디션을 저장하지 못했습니다.');
+    return toVitals(data);
   },
 };

@@ -6,7 +6,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { SymptomKey } from '@/types';
 import { SYMPTOM_LABELS, SYMPTOM_ORDER } from '@/lib/recovery';
-import { symptomMetaMap } from '@/mock/data';
+import { symptomMetaMap } from '@/mock/reference';
 import { cn } from '@/lib/utils';
 
 export interface BackfillModalProps {

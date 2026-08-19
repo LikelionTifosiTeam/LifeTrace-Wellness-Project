@@ -1,17 +1,15 @@
 /**
  * Supabase 테이블 타입.
  *
- * 스키마 원본은 supabase/migrations/20260819000001_init_afterglow.sql.
- * 실제 프로젝트 연결 후에는 아래 명령으로 자동 생성한 파일로 교체한다.
+ * 스키마 원본은 supabase/migrations/. 실제 프로젝트 연결 후에는 아래 명령으로
+ * 자동 생성한 파일로 교체할 수 있다.
  *
  *   npx supabase gen types typescript --project-id <ref> > lib/supabase/database.types.ts
- *
- * 그 전까지는 이 수기 정의가 컴파일 타임 안전망 역할을 한다.
  */
 
-export type WearableSourceRow = 'apple-health' | 'galaxy-watch' | 'fitbit' | 'manual';
 export type JourneyStatusRow = 'on-track' | 'watch' | 'off-track' | 'completed';
 export type AlertLevelRow = 'info' | 'watch' | 'urgent';
+export type ClinicRoleRow = 'practitioner' | 'admin';
 
 export interface ProfileRow {
   id: string;
@@ -20,8 +18,21 @@ export interface ProfileRow {
   birth_year: number | null;
   gender: string | null;
   checkin_reminder_time: string;
-  connected_wearable: WearableSourceRow | null;
   clinic_sharing_consent: boolean;
+  created_at: string;
+}
+
+export interface ClinicRow {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface ClinicMemberRow {
+  user_id: string;
+  clinic_id: string;
+  display_name: string;
+  role: ClinicRoleRow;
   created_at: string;
 }
 
@@ -58,16 +69,13 @@ export interface DailyCheckinRow {
   created_at: string;
 }
 
-export interface WearableSnapshotRow {
+export interface DailyVitalsRow {
   id: string;
   user_id: string;
   date: string;
-  source: WearableSourceRow;
   sleep_hours: number;
-  sleep_quality: number | null;
-  hrv_ms: number | null;
-  resting_hr: number | null;
-  steps: number | null;
+  stress_level: number | null;
+  alcohol: boolean;
   created_at: string;
 }
 
@@ -99,6 +107,7 @@ export interface RecoveryAlertRow {
 export interface ClinicResponseRow {
   id: string;
   alert_id: string;
+  responder_id: string | null;
   practitioner_name: string;
   message: string;
   suggested_visit: boolean;

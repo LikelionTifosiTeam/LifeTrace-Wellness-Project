@@ -3,7 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { anthropicApiKey, anthropicModel, hasAnthropicKey } from '@/lib/env';
 import { buildCareCardPrompt, extractSignals, generateCareCard } from '@/lib/careCard';
 import { getPhase } from '@/lib/recovery';
-import { getProtocol, mockEnvironments, mockWearables } from '@/mock/data';
+import { getProtocol } from '@/mock/protocols';
+import { fallbackEnvironment } from '@/mock/reference';
 import type { DailyCareCard } from '@/types';
 
 export const runtime = 'nodejs';
@@ -14,7 +15,7 @@ interface CareCardRequest {
   day: number;
   protocolId: string;
   yesterdayCheckin?: Parameters<typeof generateCareCard>[0]['yesterdayCheckin'];
-  wearables?: Parameters<typeof generateCareCard>[0]['wearables'];
+  vitals?: Parameters<typeof generateCareCard>[0]['vitals'];
   environment?: Parameters<typeof generateCareCard>[0]['environment'];
 }
 
@@ -56,8 +57,8 @@ export async function POST(req: Request) {
     protocol,
     phase,
     yesterdayCheckin: body.yesterdayCheckin ?? null,
-    wearables: body.wearables ?? mockWearables,
-    environment: body.environment ?? mockEnvironments[mockEnvironments.length - 1],
+    vitals: body.vitals ?? [],
+    environment: body.environment ?? fallbackEnvironment(body.date),
   };
 
   // 금기·권장 목록과 신호는 항상 규칙 엔진이 만든다. LLM은 문장만 담당한다.

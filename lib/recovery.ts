@@ -17,7 +17,7 @@ import {
   RestrictionRule,
   RecommendationRule,
   SymptomKey,
-  WearableSnapshot,
+  DailyVitals,
   AlertLevel,
   JourneyStatus,
 } from '@/types';
@@ -95,24 +95,26 @@ export interface RecoveryModifier {
 }
 
 /**
- * 수면·HRV·안정시심박으로 회복 속도 기대치를 보정한다.
+ * 수면 · 스트레스 · 음주로 회복 속도 기대치를 보정한다.
+ *
+ * 웨어러블 없이 웹에서 사용자가 직접 입력한 세 값만 쓴다. 기기가 없다는 이유로
+ * 개인화에서 제외되는 사용자가 없어야 하기 때문이다.
  *
  * 근거 방향(문헌상 알려진 경향):
  *  - 수면 부족은 창상 치유와 염증 해소를 지연시킨다
- *  - HRV 저하는 자율신경 회복 여력 저하와 연관된다
- * 개별 수치는 의학적 확정값이 아니라 서비스 내부 가중치이며, UI에 항상 그렇게 표기한다.
+ *  - 만성 스트레스는 염증 반응을 길게 유지시킨다
+ *  - 음주는 혈관 확장으로 부종을 악화시킨다
+ * 개별 가중치는 의학적 확정값이 아니라 서비스 내부 기준이며, UI에 항상 그렇게 표기한다.
  */
-export function computeRecoveryModifier(
-  snapshots: WearableSnapshot[],
-  baselineHrv = 52
-): RecoveryModifier {
-  if (snapshots.length === 0) {
-    return { factor: 1, reasons: ['웨어러블 미연동 — 표준 회복 속도로 계산 중'] };
+export function computeRecoveryModifier(vitals: DailyVitals[]): RecoveryModifier {
+  if (vitals.length === 0) {
+    return { factor: 1, reasons: ['컨디션 기록 없음 — 표준 회복 속도로 계산 중'] };
   }
 
-  const recent = snapshots.slice(-3);
-  const avgSleep = recent.reduce((s, w) => s + w.sleepHours, 0) / recent.length;
-  const avgHrv = recent.reduce((s, w) => s + w.hrvMs, 0) / recent.length;
+  const recent = vitals.slice(-3);
+  const avgSleep = recent.reduce((s, v) => s + v.sleepHours, 0) / recent.length;
+  const avgStress = recent.reduce((s, v) => s + v.stressLevel, 0) / recent.length;
+  const drinkDays = recent.filter((v) => v.alcohol).length;
 
   let factor = 1;
   const reasons: string[] = [];
@@ -125,17 +127,21 @@ export function computeRecoveryModifier(
     reasons.push(`최근 3일 평균 수면 ${round(avgSleep)}시간 — 회복에 유리한 조건`);
   }
 
-  const hrvDelta = (avgHrv - baselineHrv) / baselineHrv;
-  if (hrvDelta < -0.15) {
+  if (avgStress >= 7) {
     factor -= 0.1;
-    reasons.push(`HRV ${round(avgHrv)}ms — 평소보다 낮음, 몸의 회복 여력 저하`);
-  } else if (hrvDelta > 0.1) {
+    reasons.push(`최근 3일 평균 스트레스 ${round(avgStress)}/10 — 염증이 오래갈 수 있음`);
+  } else if (avgStress <= 3) {
     factor += 0.05;
-    reasons.push(`HRV ${round(avgHrv)}ms — 평소보다 높음, 회복 여력 양호`);
+    reasons.push(`최근 3일 평균 스트레스 ${round(avgStress)}/10 — 안정적`);
+  }
+
+  if (drinkDays > 0) {
+    factor -= 0.07 * drinkDays;
+    reasons.push(`최근 3일 중 음주 ${drinkDays}일 — 붓기가 다시 올라올 수 있음`);
   }
 
   if (reasons.length === 0) {
-    reasons.push('수면·HRV 모두 평소 범위 — 표준 회복 속도');
+    reasons.push('수면·스트레스 모두 평소 범위 — 표준 회복 속도');
   }
 
   return { factor: round(clamp(factor, 0.7, 1.2), 2), reasons };

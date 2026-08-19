@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sparkle, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { navItems } from './nav-config';
-import { DataSourceBadge } from './DataSourceBadge';
 import { authService } from '@/services/auth';
 
 export const Sidebar: React.FC = () => {
@@ -55,10 +54,7 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      <div className="p-3 border-t border-slate-100 space-y-2">
-        <div className="px-1">
-          <DataSourceBadge />
-        </div>
+      <div className="p-3 border-t border-slate-100">
         <button
           type="button"
           onClick={handleLogout}

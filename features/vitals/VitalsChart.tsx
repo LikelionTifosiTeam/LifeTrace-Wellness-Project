@@ -11,12 +11,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { DailyCheckin, WearableSnapshot } from '@/types';
-import { SymptomKey } from '@/types';
+import { DailyCheckin, DailyVitals, SymptomKey } from '@/types';
 
 export interface VitalsChartProps {
-  wearables: WearableSnapshot[];
+  vitals: DailyVitals[];
   checkins: DailyCheckin[];
+  /** 시술일. D+N 축을 만들기 위해 필요하다. */
+  procedureDate: string;
   symptom: SymptomKey;
   symptomLabel: string;
 }
@@ -28,7 +29,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div className="bg-white border border-slate-200 rounded-xl shadow-float px-3 py-2 text-xs">
       <p className="font-bold text-slate-900 mb-1">D+{label}</p>
       <p className="text-accent-700">수면 {row.sleep}시간</p>
-      <p className="text-slate-500">HRV {row.hrv}ms</p>
+      <p className="text-slate-500">스트레스 {row.stress}/10</p>
+      {row.alcohol && <p className="text-amber-600">음주 있음</p>}
       {row.symptom !== null && (
         <p className="text-brand-700 font-semibold">
           {row.symptomLabel} {row.symptom}/4
@@ -40,19 +42,30 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 /** 수면(막대) 위에 증상(선)을 겹쳐 "생활 → 회복" 관계를 눈으로 보게 만든다. */
 export const VitalsChart: React.FC<VitalsChartProps> = ({
-  wearables,
+  vitals,
   checkins,
+  procedureDate,
   symptom,
   symptomLabel,
 }) => {
+  const dayOf = (date: string) =>
+    Math.round(
+      (new Date(`${date}T00:00:00`).getTime() - new Date(`${procedureDate}T00:00:00`).getTime()) /
+        86400000
+    );
+
   const byDay = new Map(checkins.map((c) => [c.day, c]));
-  const data = wearables.map((w, day) => ({
-    day,
-    sleep: w.sleepHours,
-    hrv: w.hrvMs,
-    symptom: byDay.get(day)?.symptoms[symptom] ?? null,
-    symptomLabel,
-  }));
+  const data = vitals.map((v) => {
+    const day = dayOf(v.date);
+    return {
+      day,
+      sleep: v.sleepHours,
+      stress: v.stressLevel,
+      alcohol: v.alcohol,
+      symptom: byDay.get(day)?.symptoms[symptom] ?? null,
+      symptomLabel,
+    };
+  });
 
   return (
     <div className="w-full h-56">

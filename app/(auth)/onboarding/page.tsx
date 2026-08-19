@@ -10,9 +10,9 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
 import { authService } from '@/services/auth';
-import { procedureOptions, DEMO_TODAY } from '@/mock/data';
+import { procedureOptions } from '@/mock/protocols';
 import { ProcedureCategory } from '@/types';
-import { cn, daysBetween } from '@/lib/utils';
+import { cn, daysBetween, todayKST } from '@/lib/utils';
 
 const STEPS = ['시술', '날짜', '클리닉', '동의'] as const;
 
@@ -26,9 +26,8 @@ export default function OnboardingPage() {
   const [clinicName, setClinicName] = useState('');
   const [reminderTime, setReminderTime] = useState('21:30');
   const [clinicSharing, setClinicSharing] = useState(false);
-  const [connectWearable, setConnectWearable] = useState(true);
 
-  const elapsed = procedureDate ? daysBetween(procedureDate, DEMO_TODAY) : null;
+  const elapsed = procedureDate ? daysBetween(procedureDate, todayKST()) : null;
 
   const canNext =
     (step === 0 && procedure) ||
@@ -48,7 +47,6 @@ export default function OnboardingPage() {
         clinicName,
         clinicSharingConsent: clinicSharing,
         checkinReminderTime: reminderTime,
-        connectWearable,
       });
       router.push('/today');
     } finally {
@@ -139,7 +137,7 @@ export default function OnboardingPage() {
                 <Input
                   type="date"
                   label="시술 날짜"
-                  max={DEMO_TODAY}
+                  max={todayKST()}
                   value={procedureDate}
                   onChange={(e) => setProcedureDate(e.target.value)}
                 />
@@ -191,7 +189,7 @@ export default function OnboardingPage() {
                   기록을 어떻게 쓸지 정해주세요
                 </h1>
                 <p className="text-sm text-slate-500 mt-1.5 mb-6">
-                  둘 다 끄고 시작해도 됩니다. 나중에 언제든 바꿀 수 있습니다.
+                  꺼둔 채로 시작해도 됩니다. 설정에서 언제든 바꿀 수 있습니다.
                 </p>
 
                 <div className="space-y-3">
@@ -222,29 +220,6 @@ export default function OnboardingPage() {
                     </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setConnectWearable((v) => !v)}
-                    className={cn(
-                      'w-full flex items-start gap-3 p-4 rounded-2xl border text-left transition-all',
-                      connectWearable ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5',
-                        connectWearable ? 'bg-brand-600 text-white' : 'bg-slate-200'
-                      )}
-                    >
-                      {connectWearable && <Check className="w-3.5 h-3.5" />}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">웨어러블 연동</p>
-                      <p className="text-xs text-slate-600 leading-relaxed mt-1">
-                        수면과 심박변이도만 읽어 회복 속도 기대치를 보정합니다.
-                      </p>
-                    </div>
-                  </button>
                 </div>
 
                 <div className="flex items-start gap-2 p-4 rounded-xl bg-slate-100/70 border border-slate-200 mt-4 text-xs text-slate-600 leading-relaxed">

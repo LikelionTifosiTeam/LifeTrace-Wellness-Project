@@ -192,19 +192,21 @@ export interface CareSignal {
 }
 
 // ---------------------------------------------------------------------------
-// 웨어러블 / 환경
+// 데일리 컨디션 / 환경
 // ---------------------------------------------------------------------------
 
-export type WearableSource = 'apple-health' | 'galaxy-watch' | 'fitbit' | 'manual';
-
-export interface WearableSnapshot {
+/**
+ * 하루 컨디션. 사용자가 웹에서 직접 입력한다.
+ *
+ * 웨어러블 연동을 쓰지 않는 이유: 웹만으로 동작해야 하고, 기기가 없는 사용자를
+ * 배제하지 않아야 한다. 수면·스트레스·음주 세 가지면 회복 속도 보정에 충분하다.
+ */
+export interface DailyVitals {
   date: string;
-  source: WearableSource;
   sleepHours: number;
-  sleepQuality: number;          // 0~100
-  hrvMs: number;                 // 심박변이도. 회복력 대리 지표
-  restingHr: number;
-  steps: number;
+  /** 0(없음) ~ 10(매우 높음) 자가 보고 */
+  stressLevel: number;
+  alcohol: boolean;
 }
 
 export interface EnvironmentSnapshot {
@@ -287,7 +289,6 @@ export interface User {
   gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
   /** 알림을 받고 싶은 시간대. 강요가 아니라 안심이 되도록 */
   checkinReminderTime: string;   // 'HH:mm'
-  connectedWearable?: WearableSource;
   clinicSharingConsent: boolean;
   createdAt: string;
 }
@@ -306,7 +307,7 @@ export interface TodayScreenData {
   todayCheckin: DailyCheckin | null;
   streak: CheckinStreak;
   activeAlert: RecoveryAlert | null;
-  wearable: WearableSnapshot | null;
+  vitals: DailyVitals | null;
   environment: EnvironmentSnapshot;
 }
 
@@ -321,9 +322,45 @@ export interface RecoveryScreenData {
 
 /** /vitals 화면 */
 export interface VitalsScreenData {
-  wearables: WearableSnapshot[];
+  vitals: DailyVitals[];
   environments: EnvironmentSnapshot[];
   correlations: RecoveryCorrelation[];
-  connected: boolean;
-  source?: WearableSource;
+  /** 오늘 컨디션을 이미 입력했는지 */
+  hasToday: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// 클리닉(의료진) 화면
+// ---------------------------------------------------------------------------
+
+export interface ClinicMember {
+  userId: string;
+  clinicId: string;
+  clinicName: string;
+  displayName: string;
+  role: 'practitioner' | 'admin';
+}
+
+/** 공유받은 알림 1건. 환자 식별 정보는 최소한만 포함한다. */
+export interface ClinicCase {
+  alertId: string;
+  journeyId: string;
+  /** 환자 실명 대신 여정 기준 표시명 (예: '리프팅 · D+8') */
+  procedureName: string;
+  procedureDate: string;
+  day: number;
+  level: AlertLevel;
+  title: string;
+  detail: string;
+  triggeredBy: { symptom: SymptomKey; expected: number; actual: number }[];
+  recommendedAction: string;
+  sharedAt: string | null;
+  /** 공유 범위: 알림 전후 3일 체크인만 */
+  recentCheckins: DailyCheckin[];
+  response: ClinicResponse | null;
+}
+
+export interface ClinicScreenData {
+  member: ClinicMember;
+  cases: ClinicCase[];
 }
