@@ -4,10 +4,24 @@
 
 - [x] `git push origin main`
 - [x] Supabase 대시보드 → Authentication → Confirm email 끄기
-- [ ] Vercel 배포 → 프로덕트 URL 확보 → 아래 표에 기입
+- [x] IR Deck PDF 내보내기 → [assets/AfterGlow-IR-Deck.pdf](assets/AfterGlow-IR-Deck.pdf)
+- [ ] **Vercel GitHub 앱 설치** → 프로젝트 연결 → 프로덕트 URL 확보 (아래 참고)
 - [ ] 시연 영상 녹화 ([demo-script.md](demo-script.md) 순서대로)
-- [ ] IR Deck PDF 내보내기
 - [ ] **심사 직전 시연 데이터 재정렬** (아래 참고)
+
+### 배포 (Vercel 무료 플랜)
+
+GitHub Pages는 정적 파일만 서빙해 미들웨어(역할별 라우트 보호)와 API 라우트를 쓸 수 없습니다.
+Vercel 무료 Hobby 플랜은 이 둘을 그대로 지원하므로 코드 변경 없이 배포됩니다.
+
+1. <https://github.com/apps/vercel> 에서 **Vercel GitHub 앱 설치**
+   → `LikelionTifosiTeam/LifeTrace-Wellness-Project` 저장소에 접근 권한 부여
+2. <https://vercel.com/new> 에서 해당 저장소 Import → Framework는 Next.js 자동 감지
+3. **환경 변수 설정 불필요** — Supabase 공개 키가 코드 기본값으로 들어 있고,
+   접근 통제는 전부 RLS가 담당합니다.
+4. Deploy → `https://<프로젝트명>.vercel.app` 확보
+
+이후 `main`에 푸시할 때마다 자동 재배포됩니다.
 
 ### 심사 직전에 한 번 실행
 
