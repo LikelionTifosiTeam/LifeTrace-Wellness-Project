@@ -9,6 +9,7 @@ import {
   Flame,
   Moon,
   PencilLine,
+  Sparkle,
   Sun,
   Timer,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { CareCardView } from '@/features/today/CareCardView';
 import { AlertCard } from '@/features/recovery/AlertCard';
 import { TodayScreenData } from '@/types';
 import { journeyService } from '@/services/journey';
+import { ApiError } from '@/services/supabase';
 import { getJustLiftedRestrictions } from '@/lib/recovery';
 import { formatKoreanDate } from '@/lib/utils';
 
@@ -42,14 +44,21 @@ export default function TodayPage() {
   const [data, setData] = useState<TodayScreenData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  // 여정이 없는 것은 오류가 아니라 '아직 시작하지 않은 상태'다. 다르게 안내한다.
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
+    setNeedsOnboarding(false);
     try {
       setData(await journeyService.getToday());
-    } catch {
-      setIsError(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'JOURNEY_NOT_FOUND') {
+        setNeedsOnboarding(true);
+      } else {
+        setIsError(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +78,34 @@ export default function TodayPage() {
     >
       {isLoading && <TodaySkeleton />}
       {!isLoading && isError && <ErrorState onRetry={load} />}
+
+      {!isLoading && needsOnboarding && (
+        <div className="space-y-4">
+          <Card>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                <Sparkle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold tracking-tight text-slate-900">
+                  아직 등록된 시술이 없어요
+                </h2>
+                <p className="text-sm text-slate-600 leading-relaxed mt-2">
+                  시술 종류와 시술일만 등록하면 회복 곡선이 그려지고, 오늘이 D+며칠인지부터 보이기
+                  시작합니다. 1분이면 충분합니다.
+                </p>
+                <Link href="/onboarding" className="inline-block mt-4">
+                  <Button className="gap-2">
+                    시술 등록하고 시작하기
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+          <MedicalDisclaimer compact />
+        </div>
+      )}
 
       {!isLoading && !isError && data && (
         <div className="space-y-4">

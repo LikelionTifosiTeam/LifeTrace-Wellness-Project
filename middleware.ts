@@ -62,6 +62,25 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/today';
       return NextResponse.redirect(url);
     }
+
+    // 진행 중인 여정이 없으면 앱 화면들이 전부 빈손이 된다.
+    // 화면마다 예외를 처리하는 대신 여기서 온보딩으로 보낸다.
+    const needsJourney = needsAuth && !isClinic && !path.startsWith('/onboarding');
+    if (needsJourney) {
+      const { data: journey } = await supabase
+        .from('recovery_journeys')
+        .select('id')
+        .eq('user_id', user.id)
+        .is('completed_at', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (!journey) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/onboarding';
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return response;

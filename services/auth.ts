@@ -8,7 +8,13 @@ import type {
   RecoveryJourneyRow,
 } from '@/lib/supabase/database.types';
 import { todayKST } from '@/lib/utils';
+import { DEMO_ACCOUNTS } from '@/lib/demo-accounts';
 import { ApiError, db, requireUserId } from './supabase';
+
+/** 심사용 시연 계정인지 */
+function isDemoAccount(email: string): boolean {
+  return email === DEMO_ACCOUNTS.user.email || email === DEMO_ACCOUNTS.clinic.email;
+}
 
 export interface OnboardingInput {
   /** 회복 곡선과 금기 목록을 결정하는 키. 시술 종류마다 다르다. */
@@ -67,7 +73,18 @@ export const authService = {
     return { isClinic: Boolean(membership) };
   },
 
-  async signup(input: { email: string; name: string; password: string }): Promise<User> {
+  /**
+   * 회원가입.
+   *
+   * 프로젝트에 이메일 확인이 켜져 있으면 signUp이 세션을 주지 않는다.
+   * 그 경우 앱으로 밀어 넣으면 사용자가 이유도 모른 채 막히므로,
+   * 세션 발급 여부를 그대로 돌려주고 화면이 안내하게 한다.
+   */
+  async signup(input: {
+    email: string;
+    name: string;
+    password: string;
+  }): Promise<{ needsEmailConfirmation: boolean }> {
     const { data, error } = await db().auth.signUp({
       email: input.email,
       password: input.password,
@@ -77,12 +94,48 @@ export const authService = {
       throw new ApiError('SIGNUP_FAILED', error?.message ?? '회원가입에 실패했습니다.');
     }
 
+    if (!data.session) {
+      return { needsEmailConfirmation: true };
+    }
+
     // 프로필은 DB 트리거(handle_new_user)가 만든다. 이름만 확실히 반영한다.
     await db().from('profiles').update({ name: input.name }).eq('id', data.user.id);
-    return authService.getCurrentUser();
+    return { needsEmailConfirmation: false };
   },
 
   async logout(): Promise<void> {
+    await db().auth.signOut();
+  },
+
+  /**
+   * 내 기록 전체 삭제.
+   *
+   * RLS가 본인 행만 통과시키므로 클라이언트에서 안전하게 지울 수 있다.
+   * 외래키가 cascade로 걸려 있어 여정을 지우면 체크인·알림·아카이브가 함께 사라지지만,
+   * 남는 것이 없도록 테이블별로 명시해 지운다.
+   *
+   * 심사·시연 계정은 다음 사람이 같은 시나리오를 봐야 하므로 삭제를 막는다.
+   */
+  async deleteAllData(): Promise<void> {
+    const userId = await requireUserId();
+    const user = await authService.getCurrentUser();
+
+    if (isDemoAccount(user.email)) {
+      throw new ApiError(
+        'DEMO_ACCOUNT_PROTECTED',
+        '시연용 계정은 삭제할 수 없습니다. 다음 참가자도 같은 화면을 봐야 하기 때문입니다.',
+        403
+      );
+    }
+
+    // 자식 → 부모 순서로 지운다.
+    await db().from('journey_archives').delete().eq('user_id', userId);
+    await db().from('recovery_alerts').delete().eq('user_id', userId);
+    await db().from('care_cards').delete().eq('user_id', userId);
+    await db().from('daily_checkins').delete().eq('user_id', userId);
+    await db().from('daily_vitals').delete().eq('user_id', userId);
+    await db().from('recovery_journeys').delete().eq('user_id', userId);
+
     await db().auth.signOut();
   },
 

@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ name?: string; email?: string; form?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +28,11 @@ export default function SignupPage() {
 
     setIsLoading(true);
     try {
-      await authService.signup({ name, email, password });
+      const { needsEmailConfirmation } = await authService.signup({ name, email, password });
+      if (needsEmailConfirmation) {
+        setNeedsConfirm(true);
+        return;
+      }
       router.push('/onboarding');
     } catch (err) {
       setErrors({ form: err instanceof Error ? err.message : '회원가입에 실패했습니다.' });
@@ -45,6 +50,26 @@ export default function SignupPage() {
         <span className="font-extrabold text-lg tracking-tight">AfterGlow</span>
       </Link>
 
+      {needsConfirm ? (
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200/80 shadow-soft p-6">
+          <h1 className="text-xl font-extrabold tracking-tight">메일함을 확인해 주세요</h1>
+          <p className="text-sm text-slate-600 leading-relaxed mt-2">
+            <strong className="text-slate-900">{email}</strong> 으로 인증 메일을 보냈습니다. 메일의
+            링크를 눌러 확인을 마치면 로그인할 수 있습니다.
+          </p>
+          <div className="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              바로 둘러보고 싶다면 로그인 화면의 <strong className="text-slate-900">시연 계정</strong>을
+              사용하세요. 별도 인증 없이 즉시 들어갈 수 있습니다.
+            </p>
+          </div>
+          <Link href="/login" className="block mt-4">
+            <Button size="lg" className="w-full">
+              로그인 화면으로
+            </Button>
+          </Link>
+        </div>
+      ) : (
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200/80 shadow-soft p-6">
         <h1 className="text-xl font-extrabold tracking-tight">회복을 혼자 견디지 않도록</h1>
         <p className="text-sm text-slate-500 mt-1 mb-6">
@@ -90,6 +115,7 @@ export default function SignupPage() {
           </Link>
         </p>
       </div>
+      )}
     </div>
   );
 }

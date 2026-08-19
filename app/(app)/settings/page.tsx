@@ -12,6 +12,7 @@ import { ErrorState } from '@/components/states/ErrorState';
 import { User } from '@/types';
 import { authService } from '@/services/auth';
 import { checkinService } from '@/services/checkin';
+import { useRouter } from 'next/navigation';
 import { cn, todayKST } from '@/lib/utils';
 
 const Toggle: React.FC<{
@@ -48,9 +49,23 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [showDelete, setShowDelete] = useState(false);
-
-  const [reminderOn, setReminderOn] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [reminderTime, setReminderTime] = useState('21:30');
+  const router = useRouter();
+
+  const handleDelete = async () => {
+    setDeleteError('');
+    setIsDeleting(true);
+    try {
+      await authService.deleteAllData();
+      router.push('/');
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : '삭제하지 못했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -122,31 +137,29 @@ export default function SettingsPage() {
           <Card>
             <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-1">
               <Bell className="w-4 h-4 text-slate-400" />
-              체크인 알림
+              체크인 리마인더 시간
             </h2>
             <p className="text-xs text-slate-500 mb-4">
-              회복 초기에는 매일, 4주 이후에는 주 2회로 자동으로 줄어듭니다. 알림은 강요가 아니라
-              안심을 위한 것이므로 언제든 끌 수 있습니다.
+              하루 중 기록하기 편한 시간을 저장해 둡니다. 회복 초기에는 매일, 4주 이후에는 주 2회로
+              빈도가 줄어드는 방식으로 설계되어 있습니다.
             </p>
 
             <div className="flex items-center gap-3 py-2">
-              <span className="text-sm text-slate-700 flex-1">알림 받기</span>
-              <Toggle checked={reminderOn} onChange={setReminderOn} label="체크인 알림" />
+              <span className="text-sm text-slate-700 flex-1">알림 시간</span>
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                onBlur={() => save({ checkinReminderTime: reminderTime })}
+                className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                aria-label="알림 시간"
+              />
             </div>
 
-            {reminderOn && (
-              <div className="flex items-center gap-3 py-2 border-t border-slate-100">
-                <span className="text-sm text-slate-700 flex-1">알림 시간</span>
-                <input
-                  type="time"
-                  value={reminderTime}
-                  onChange={(e) => setReminderTime(e.target.value)}
-                  onBlur={() => save({ checkinReminderTime: reminderTime })}
-                  className="px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  aria-label="알림 시간"
-                />
-              </div>
-            )}
+            <p className="text-[11px] text-slate-400 leading-relaxed mt-2 pt-3 border-t border-slate-100">
+              현재 버전은 이 시간을 저장만 하고 실제 푸시 발송은 하지 않습니다. 웹 푸시 발송은
+              다음 단계 작업입니다.
+            </p>
           </Card>
 
           <Card>
@@ -194,16 +207,35 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title="정말 삭제할까요?">
+      <Modal
+        isOpen={showDelete}
+        onClose={() => {
+          setShowDelete(false);
+          setDeleteError('');
+        }}
+        title="정말 삭제할까요?"
+      >
         <p className="text-sm text-slate-600 leading-relaxed">
-          체크인 기록, 회복 곡선, 클리닉에 공유된 내용까지 모두 삭제됩니다. 이 작업은 되돌릴 수
-          없습니다.
+          체크인 기록, 회복 곡선, 컨디션 기록, 클리닉에 공유된 내용까지 모두 삭제되고 로그아웃됩니다.
+          이 작업은 되돌릴 수 없습니다.
         </p>
+        {deleteError && (
+          <p role="alert" className="text-xs text-red-600 font-medium mt-3">
+            {deleteError}
+          </p>
+        )}
         <div className="flex gap-2 mt-6">
-          <Button variant="outline" className="flex-1" onClick={() => setShowDelete(false)}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setShowDelete(false);
+              setDeleteError('');
+            }}
+          >
             취소
           </Button>
-          <Button variant="danger" className="flex-1" onClick={() => setShowDelete(false)}>
+          <Button variant="danger" className="flex-1" isLoading={isDeleting} onClick={handleDelete}>
             삭제하기
           </Button>
         </div>

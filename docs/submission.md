@@ -1,5 +1,17 @@
 # 제출 자료 정리
 
+## 0. 제출 전 남은 작업
+
+- [ ] `git push origin main`
+- [ ] Vercel 배포 → 프로덕트 URL 확보 → 아래 표에 기입
+- [ ] **Supabase 대시보드 → Authentication → Sign In / Providers → "Confirm email" 끄기**
+      (켜져 있으면 심사위원이 직접 회원가입해도 인증 메일 때문에 로그인할 수 없고,
+       기본 SMTP 발송 한도에 걸립니다. 시연 계정 진입은 이 설정과 무관하게 정상 동작합니다.)
+- [ ] 시연 영상 녹화 ([demo-script.md](demo-script.md) 순서대로)
+- [ ] IR Deck을 제출 포맷으로 준비 (웹 링크 공유 또는 PDF 내보내기)
+
+---
+
 ## 1. 프로덕트 URL
 
 배포 후 이 자리에 최종 URL을 채웁니다.
