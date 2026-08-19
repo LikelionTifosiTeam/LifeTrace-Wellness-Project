@@ -107,24 +107,31 @@ function CaseCard({ item, onReplied }: { item: ClinicCase; onReplied: () => void
             {item.recentCheckins.length === 0 ? (
               <p className="text-xs text-slate-400">해당 구간에 기록이 없습니다.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+              <div className="overflow-x-auto -mx-1 px-1">
+                {/* 좁은 화면에서 헤더가 세로로 쪼개지지 않게 한다.
+                    넘치면 표만 가로로 스크롤된다. */}
+                <table className="w-full text-xs whitespace-nowrap">
                   <thead>
                     <tr className="text-slate-400">
-                      <th className="text-left font-medium py-1 pr-3">경과</th>
+                      <th className="text-left font-medium py-1 pr-2">경과</th>
+                      <th className="text-left font-medium py-1 pr-3">금기</th>
                       {SYMPTOM_ORDER.map((k) => (
                         <th key={k} className="text-center font-medium py-1 px-1.5">
                           {SYMPTOM_LABELS[k]}
                         </th>
                       ))}
-                      <th className="text-center font-medium py-1 pl-2">금기</th>
                     </tr>
                   </thead>
                   <tbody>
                     {item.recentCheckins.map((c) => (
                       <tr key={c.id} className="border-t border-slate-100">
-                        <td className="py-1.5 pr-3 font-bold text-slate-700 whitespace-nowrap">
-                          D+{c.day}
+                        <td className="py-1.5 pr-2 font-bold text-slate-700">D+{c.day}</td>
+                        <td className="py-1.5 pr-3">
+                          {c.followedRestrictions ? (
+                            <span className="text-slate-400">준수</span>
+                          ) : (
+                            <span className="text-amber-600 font-bold">미준수</span>
+                          )}
                         </td>
                         {SYMPTOM_ORDER.map((k) => (
                           <td key={k} className="text-center py-1.5 px-1.5">
@@ -138,13 +145,6 @@ function CaseCard({ item, onReplied }: { item: ClinicCase; onReplied: () => void
                             </span>
                           </td>
                         ))}
-                        <td className="text-center py-1.5 pl-2">
-                          {c.followedRestrictions ? (
-                            <span className="text-emerald-600">준수</span>
-                          ) : (
-                            <span className="text-amber-600 font-semibold">미준수</span>
-                          )}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
