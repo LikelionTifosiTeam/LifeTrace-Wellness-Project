@@ -129,36 +129,87 @@ export function buildCareCardPrompt(input: CareCardInput, signals: CareSignal[])
 // 로컬 생성기 — API 키 없이도 데모가 동작하도록
 // ---------------------------------------------------------------------------
 
+/**
+ * 오늘의 한 문장.
+ *
+ * 우선순위대로 후보를 모으고 가장 앞선 것을 쓴다.
+ * 우선순위는 "사용자가 오늘 가장 알고 싶어 하는 순서"다 —
+ * 풀린 금기 > 몸 상태 경고 > 단계 전환 > 환경 > 순항 격려.
+ *
+ * 같은 문장이 반복되지 않도록 순항 문구는 경과일로 갈라 쓴다.
+ * (LLM 키가 연결되면 이 문장은 Claude가 쓴 문장으로 대체된다.)
+ */
 function composeHeadline(input: CareCardInput, signals: CareSignal[]): string {
-  const lifted = getJustLiftedRestrictions(input.protocol, input.day);
+  const { day, protocol, phase, yesterdayCheckin } = input;
+  const impact = (key: string) => signals.find((s) => s.key === key)?.impact;
+
+  // 1. 오늘 풀린 금기 — 사용자가 가장 기다리는 정보
+  const lifted = getJustLiftedRestrictions(protocol, day);
   if (lifted.length > 0) {
-    return `오늘부터 ${lifted[0].label}, 다시 괜찮아요`;
+    // 결과가 보이기 시작하는 날과 겹치면 둘 다 전한다. 하나만 말하면 아까운 날이다.
+    if (day === protocol.resultVisibleFromDay) {
+      return `오늘부터 ${lifted[0].label}, 그리고 변화가 보이기 시작해요`;
+    }
+    return lifted.length === 1
+      ? `오늘부터 ${lifted[0].label}, 다시 괜찮아요`
+      : `오늘부터 ${lifted.length}가지가 다시 괜찮아요`;
   }
 
-  const sleep = signals.find((s) => s.key === 'sleep');
-  if (sleep?.impact === '주의') {
+  // 2. 몸에서 온 경고 — 회복 속도 기대치를 실제로 바꾸는 신호
+  if (impact('alcohol') === '주의') {
+    return '어제 술이 있었네요. 오늘은 붓기가 한 번 더 올라올 수 있어요';
+  }
+  if (impact('sleep') === '주의') {
     return '어젯밤 잠이 짧았어요. 오늘은 회복 속도를 낮춰 잡아둘게요';
   }
-
-  const uv = signals.find((s) => s.key === 'uv');
-  if (uv?.impact === '주의' && input.day <= 21) {
-    return '자외선이 강한 날이에요. 오늘은 색소 침착을 막는 게 1순위';
+  if (impact('stress') === '주의') {
+    return '스트레스가 높은 날이에요. 붉은기가 평소보다 오래갈 수 있어요';
   }
 
-  if (input.day === input.protocol.resultVisibleFromDay) {
-    return '오늘부터 변화가 눈에 보이기 시작하는 구간이에요';
-  }
-
-  if (input.yesterdayCheckin) {
+  // 3. 어제 기록에서 두드러진 증상
+  if (yesterdayCheckin) {
     const worst = SYMPTOM_ORDER.reduce((a, b) =>
-      input.yesterdayCheckin!.symptoms[b] > input.yesterdayCheckin!.symptoms[a] ? b : a
+      yesterdayCheckin.symptoms[b] > yesterdayCheckin.symptoms[a] ? b : a
     );
-    if (input.yesterdayCheckin.symptoms[worst] >= 3) {
+    const level = yesterdayCheckin.symptoms[worst];
+    if (level >= 3) {
       return `${SYMPTOM_LABELS[worst]}가 아직 남아 있어요. 오늘은 자극을 줄이는 날`;
+    }
+    if (level === 0 && day >= 3) {
+      return '어제는 모든 항목이 0이었어요. 지금 흐름이 가장 좋습니다';
     }
   }
 
-  return `${input.phase.label} 순항 중이에요. 오늘도 30초만 기록해 주세요`;
+  // 4. 단계·시점 전환
+  if (day === protocol.resultVisibleFromDay) {
+    return '오늘부터 변화가 눈에 보이기 시작하는 구간이에요';
+  }
+  if (day === phase.startDay && day > 0) {
+    return `오늘부터 ${phase.label}에 들어갑니다`;
+  }
+  if (day === protocol.downtimeDays) {
+    return '일상으로 돌아가도 되는 날이에요. 다만 금기는 아직 남아 있어요';
+  }
+  if (day === protocol.totalRecoveryDays - 1) {
+    return '90일 여정의 마지막 날이에요. 기록을 마무리해 주세요';
+  }
+
+  // 5. 오늘의 환경
+  if (impact('uv') === '주의' && day <= 45) {
+    return '자외선이 강한 날이에요. 오늘은 색소 침착을 막는 게 1순위';
+  }
+  if (impact('humidity') === '주의') {
+    return '건조한 날이에요. 오늘은 당김과 각질을 막는 게 우선입니다';
+  }
+
+  // 6. 순항 — 같은 문장이 반복되지 않도록 경과일로 갈라 쓴다
+  const cruising = [
+    `${phase.label} 순항 중이에요. 오늘도 30초만 기록해 주세요`,
+    `D+${day}, 예상 범위 안에서 잘 가고 있어요`,
+    `오늘은 특별히 조심할 것이 없어요. 기록만 남겨 주세요`,
+    `${phase.label}의 ${day - phase.startDay + 1}일째. 지금처럼만 하면 됩니다`,
+  ];
+  return cruising[day % cruising.length];
 }
 
 function composeRationale(input: CareCardInput, signals: CareSignal[]): string {
@@ -247,6 +298,7 @@ export function generateCareCard(input: CareCardInput): DailyCareCard {
     avoid: toActionItems(restrictions),
     recommend: [...toActionItems(recommendations), ...dynamicRecommend],
     signalsUsed: signals,
+    generatedBy: 'rule',
     generatedAt: `${input.date}T06:00:00+09:00`,
   };
 }

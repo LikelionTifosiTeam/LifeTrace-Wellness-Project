@@ -115,6 +115,12 @@ export const CareCardView: React.FC<{ card: DailyCareCard }> = ({ card }) => {
                   {s.label}
                 </li>
               ))}
+              {/* 문장을 무엇이 썼는지 숨기지 않는다. */}
+              <li className="basis-full text-[11px] text-white/55 leading-relaxed mt-1">
+                {card.generatedBy === 'llm'
+                  ? '오늘의 문장은 Claude가 위 신호를 읽고 작성했고, 금기·권장 목록은 시술 프로토콜 규칙 엔진이 만들었습니다.'
+                  : '오늘의 문장과 금기·권장 목록 모두 시술 프로토콜 규칙 엔진이 만들었습니다. LLM 키를 연결하면 문장만 Claude가 대신 씁니다.'}
+              </li>
             </motion.ul>
           )}
         </AnimatePresence>

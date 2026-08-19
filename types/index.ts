@@ -182,6 +182,13 @@ export interface DailyCareCard {
   recommend: CardActionItem[];
   /** 카드 생성에 실제로 쓰인 신호들. 투명성 확보용 */
   signalsUsed: CareSignal[];
+  /**
+   * 문장을 무엇이 썼는지.
+   * 'rule'  — 규칙 엔진의 결정론적 문장 (LLM 키 없이도 항상 동작)
+   * 'llm'   — Claude API가 생성하고 서버 안전 검증을 통과한 문장
+   * 사용자에게 그대로 표기한다. 어느 쪽인지 숨기지 않는다.
+   */
+  generatedBy: 'rule' | 'llm';
   generatedAt: string;
 }
 

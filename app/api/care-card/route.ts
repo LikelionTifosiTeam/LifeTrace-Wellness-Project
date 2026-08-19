@@ -64,12 +64,13 @@ export async function POST(req: Request) {
   // 금기·권장 목록과 신호는 항상 규칙 엔진이 만든다. LLM은 문장만 담당한다.
   const baseCard: DailyCareCard = generateCareCard(input);
 
+  // LLM 키가 없으면 규칙 엔진 문장이 그대로 최종 결과가 된다.
   if (!hasAnthropicKey()) {
-    // 목업 키 상태 — 로컬 생성기 결과를 그대로 쓴다. 데모는 항상 동작한다.
+    // 키가 없으면 규칙 엔진 문장을 그대로 쓴다. 서비스가 멈추지 않는다.
     return NextResponse.json({
       success: true,
       data: baseCard,
-      meta: { generatedBy: 'fallback', reason: 'ANTHROPIC_API_KEY 미설정' },
+      meta: { generatedBy: 'rule', reason: 'ANTHROPIC_API_KEY 미설정' },
     });
   }
 
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      data: { ...baseCard, headline, rationale },
+      data: { ...baseCard, headline, rationale, generatedBy: 'llm' as const },
       meta: { generatedBy: 'llm', model: anthropicModel },
     });
   } catch (error) {
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
       success: true,
       data: baseCard,
       meta: {
-        generatedBy: 'fallback',
+        generatedBy: 'rule',
         reason: error instanceof Error ? error.message : 'unknown',
       },
     });
