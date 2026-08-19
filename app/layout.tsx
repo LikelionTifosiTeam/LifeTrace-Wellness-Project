@@ -1,9 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DermaTrace AI - 내 피부의 변화부터, 나에게 맞는 관리의 다음 단계까지',
-  description: '피부 상태부터 치료 이력까지, 흩어진 정보를 하나로 연결해 나만의 피부 관리 여정을 만들어보세요.',
+  title: 'AfterGlow — 시술 후 90일, 회복을 혼자 견디지 않도록',
+  description: '시술 다음 날부터 90일. 하루 30초 기록으로 회복 곡선을 따라가고, 매일 새로 쓰이는 케어 카드를 받아보세요.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0d9488',
 };
 
 export default function RootLayout({

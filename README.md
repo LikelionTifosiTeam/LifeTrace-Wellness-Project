@@ -1,99 +1,209 @@
-Implementation Plan - DermaTrace AI Frontend MVP
-DermaTrace AI는 사용자의 피부 상태, 생활 습관, 피부과 치료 이력을 통합 관리하고 AI 기반 인사이트와 병원 탐색 및 예약 연결까지 지원하는 개인화 피부 관리 웰니스 SaaS 플랫폼입니다.
+# AfterGlow — 시술 후 90일, 회복을 혼자 견디지 않도록
 
-이 계획서는 백엔드 팀과의 원활한 협업을 고려한 Service Layer & Mock Data 기반 독립 프론트엔드 아키텍처 구축 및 full MVP 개발 플로우를 서술합니다.
+> 시술은 하루, 회복은 90일입니다.
 
-User Review Required
-IMPORTANT
+AfterGlow는 미용 시술을 받은 사람이 **시술 다음 날부터 90일 동안** 매일 30초 기록으로 회복을 따라가는 서비스입니다. 정지된 시술 리포트 대신, 오늘 내 상태에 맞춰 매일 다시 쓰이는 케어 플랜을 제공합니다.
 
-의료 안전성 및 표현 원칙 준수 DermaTrace AI는 의료진의 확정 진단을 대체하지 않습니다. 모든 AI 분석 결과 및 시술 정보 UI에는 <MedicalDisclaimer />가 명시되며, "진단/질병/필수 시술" 대신 "관련 가능성 있는 피부 고민", "의료진 상담 고려", "참고 정보" 등의 조율된 용어가 사용됩니다.
+---
 
-NOTE
+## 왜 이 문제인가
 
-독립적인 Frontend MVP & Service Layer 백엔드 API가 작성되기 전에도 프론트엔드 전체의 동적 렌더링, 상태 변경, 차트 시각화, 예약을 포함한 UX 흐름이 100% 작동하도록 Mock API Service Layer를 구현합니다. 추후 백엔드가 준비되면 Service Layer 내부의 fetch/axios 함수만 교체할 수 있습니다.
+기존 웰니스·뷰티 서비스는 거의 전부 **"시술 전"** 에 몰려 있습니다. 병원 탐색, 가격 비교, 리뷰, 예약. 정작 사람이 가장 불안한 구간은 그 다음입니다.
 
-Proposed Architecture & Directory Structure
-text
+| 시술 후 실제 문제 | 지금의 대응 |
+| :-- | :-- |
+| "이게 정상인가요?" — 매일 드는 질문 | 답을 아는 사람은 클리닉에, 불안한 사람은 집에 |
+| 시술 리포트가 앱에 있지만 **조회만 가능** | 오늘 내 상태에 맞춰 바뀌지 않는 정지된 문서 |
+| 금기는 시술 당일 구두로 한 번 안내 | "2주간 사우나 금지"를 12일째에 기억하는 사람은 없음 |
+| 언제 다시 해도 되는지 아무도 안 알려줌 | 사용자는 계속 참거나, 그냥 해버림 |
+| 회복이 이상해도 판단 기준이 없음 | 참다가 늦게 내원하거나, 괜찮은데 불필요하게 내원 |
 
-/
-├── app/                        # Next.js App Router Pages
-│   ├── (auth)/                 # Login / Signup / Onboarding
-│   ├── (dashboard)/            # App Main Shell (Sidebar + Header + BottomNav)
-│   │   ├── dashboard/          # Main Dashboard
-│   │   ├── analysis/           # Skin Analysis & New Analysis & Result
-│   │   ├── hospitals/          # Hospital Search, Detail, Reservation
-│   │   ├── history/            # Treatment History Timeline & Detail
-│   │   ├── skin/               # My Skin Profile & Trends
-│   │   ├── insights/           # AI Insights & Relationship Graph
-│   │   ├── profile/            # Profile & Data Management
-│   │   └── settings/           # App Settings
-│   ├── layout.tsx
-│   └── page.tsx                # Landing Page
-├── components/                 # Global Reusable Design System Components
-│   ├── ui/                     # Base UI (Button, Card, Modal, Input, Badge, etc.)
-│   ├── common/                 # Layout Shell, Navigation, MedicalDisclaimer
-│   └── states/                 # Loading Skeleton, ErrorState, EmptyState
-├── features/                   # Feature-Specific Visual & Interactive Components
-│   ├── analysis/               # Photo Uploader, Progress Bar, AI WHY Card
-│   ├── hospitals/              # Hospital Card, Filter Bar, Interactive Map Mock
-│   ├── history/                # Timeline Node, Add Record Modal, Before/After View
-│   ├── insights/               # Treatment Relationship Graph, Pattern Card
-│   └── skin/                   # Skin Score Chart, Concern Breakdown
-├── services/                   # API Service Layer Interfaces & Implementations
-├── mock/                       # Rich Mock Dataset (Users, Logs, Hospitals, Insights)
-├── types/                      # Complete TypeScript Type Definitions
-├── docs/                       # Backend Integration Contract Document
-└── lib/                        # Utility Functions & Formatters
-Phased Implementation Plan
-Phase 1: Project Setup & Base Architecture
-Initialize Next.js project with TypeScript, Tailwind CSS, Lucide Icons, Framer Motion, and Recharts.
-Define global design system colors (Teal/Slate Primary, Bright Neutral background, Soft borders & shadows).
-Create docs/frontend-backend-contract.md to define API endpoints, request/response DTOs, and error standards for backend team collaboration.
-Phase 2: Core Data Types, Mock Data & Service Layer
-Types (/types): User, SkinProfile, SkinLog, SkinAnalysis, Hospital, Reservation, TreatmentRecord, AIInsight, SkinPattern, TreatmentRelationship, DashboardData.
-Mock Dataset (/mock): Realistic data for user 김민수 (24세), 14-day skin scores, 8+ hospitals, 6+ treatment records, 5+ AI insights, and graph nodes.
-Service Layer (/services): Abstracted services with promise delays to simulate network requests with complete Loading/Error/Success states.
-Phase 3: Design System & Global Layout Shell
-Global CSS with typography hierarchy, soft cards, rounded-2xl buttons, and badges.
-<MedicalDisclaimer /> reusable safety notice.
-Layout Shell: Desktop Left Sidebar, Top Header with profile info, Mobile Bottom Navigation bar.
-Phase 4: Public Landing & Authentication Flow
-/ Landing Page: Hero with CTA, AI UI Mockup preview, 3 core value props (ANALYZE, GUIDE, LEARN), 5-step process, Timeline Preview, Safety guarantee, Footer.
-/login & /signup: Clean auth card, social login mock, registration with skin concern selection.
-/onboarding & /onboarding/skin-profile: 4-step interactive onboarding wizard (concerns, primary issue, history, goals).
-Phase 5: Core Dashboard (/dashboard)
-Hero Card with 72/100 skin score, stability tag, +8% trend.
-AI Insight banner & One Action guide card.
-Recharts 14-day interactive skin score & acne/redness trend chart.
-Recent Skin Journey timeline preview.
-Recommended nearby hospitals list & Quick Action tiles.
-Phase 6: AI Skin Analysis Flow (/analysis, /analysis/new, /analysis/result)
-/analysis: Overall metrics, recent insights, analysis history.
-/analysis/new: 4-step wizard (Photo Drag&Drop/Camera upload preview, symptom & severity scale 1-10, life factors like sleep/stress, submission).
-Visual 6-stage AI Analysis Loading progress animation.
-/analysis/result: Detected concerns %, 14-day change trends, interactive AI WHY top factors modal, non-prescriptive AI guide, CTAs to Hospital Search & Save.
-Phase 7: Hospital Search, Detail & Reservation (/hospitals, /hospitals/[id], /hospitals/[id]/reservation)
-/hospitals: Search input, specialist/condition filter badges, Desktop split Map/List layout & Mobile list/map toggle. Hospital cards with ratings & availability.
-/hospitals/[id]: Detailed view with specialist information, procedure cards (purpose, recovery, features), interactive map mockup, direct reservation trigger.
-/hospitals/[id]/reservation: 6-step interactive reservation flow with date/time selection & confirmation toast.
-Phase 8: Treatment History ("My Skin Journey") (/history, /history/[id])
-Vertical timeline with filters (All, Consultation, Treatment, Analysis).
-6-month summary category donut chart.
-/history/[id]: Detail view featuring Before/After photo comparison, rating system, notes, and outcome feedback.
-Modal dialog for adding new treatment records with instant timeline update.
-Phase 9: My Skin Profile & AI Insights (/skin, /insights)
-/skin: Skin profile card, 30/90/365-day score comparison, AI detected patterns (e.g. sleep vs acne correlation).
-/insights: Interactive Treatment Relationship Graph (Acne → Inflammation Care → Redness → Pigmentation → Texture) with clickable node details & medical non-causality disclaimer.
-Phase 10: Profile, Settings, Accessibility & Polish
-/profile: User info, privacy settings, data export/delete actions.
-/settings: Notification toggles, language, AI consent settings, logout.
-Loading Skeletons, Error Retry fallbacks, Empty states across all features.
-Full responsive optimization for Mobile (375px~430px), Tablet (768px+), Desktop (1440px).
-Verification Plan
-Automated Build & Syntax Verification
-Run npm run build or npx tsc --noEmit to guarantee 0 TypeScript errors.
-Ensure strict adherence to React rules, no missing imports, and no broken prop signatures.
-Manual UX & Navigation Verification
-Test all routing paths in browser: Landing → Login → Onboarding → Dashboard → New Analysis → Result → Hospital Search → Hospital Detail → Reservation → History → Add Record → Insights.
-Verify clear Primary CTA on every main screen to eliminate user confusion ("그래서 뭘 해야 하지?").
-Verify mobile responsiveness and bottom bar navigation tab switching.
+AfterGlow는 이 구간 하나만 정확하게 해결합니다.
+
+---
+
+## 핵심 기능 6가지
+
+### 1. 하루 30초, 사진 없는 체크인
+붓기 · 붉은기 · 통증 · 각질 · 당김 5가지를 **탭 한 번씩**. 각 단계에는 숫자가 아니라 상황 문장이 붙습니다("사진에서 티가 남", "화장으로 가려짐"). 사진은 선택. 실제 소요 시간을 측정해 UX 지표로 추적합니다.
+
+> 사진 기반 AI 진단을 핵심 축으로 쓰지 않은 것은 의도적입니다. 조명·각도 편차가 크고, 의료기기 규제 영역에 닿으며, 무엇보다 매일 하기에 무겁습니다.
+
+### 2. 예상 회복 곡선 위에 내 기록 겹치기
+시술별 프로토콜에서 증상마다 기대 곡선(peak → onset → 반감기 지수감쇠)을 생성하고, 실제 체크인을 그 위에 겹쳐 그립니다. **"지금 이 상태가 정상인가요?"에 매일 답이 나옵니다.**
+
+### 3. 매일 새로 쓰이는 케어 카드 (생성형 AI)
+경과일 + 어제 기록 + 수면·HRV + 자외선·습도를 읽고 **오늘 피할 것 / 오늘 하면 좋은 것**을 생성합니다. 그리고 **오늘 막 풀린 금기**를 먼저 알려줍니다 — 사용자가 가장 기다리는 정보입니다.
+
+안전 장치로 생성 책임을 분리했습니다.
+
+| 항목 | 생성 주체 |
+| :-- | :-- |
+| 문장(headline, rationale) | LLM |
+| 금기·권장 **목록** | 규칙 엔진 (프로토콜) |
+
+LLM이 금기 목록을 창작하면 의료 안전성이 깨집니다. 문장만 맡기고 목록은 결정론적으로 만듭니다.
+
+### 4. 수면·HRV로 회복 기대치 보정
+잠을 못 잔 주에는 회복이 느린 것이 **정상**입니다. 그런데 기존 서비스는 모두에게 같은 기대치를 들이댑니다. AfterGlow는 최근 3일 수면과 HRV로 회복 속도 기대치를 0.7~1.2배 범위에서 보정합니다. 피부 · 건강 · 일상이 하나의 곡선에서 만나는 지점입니다.
+
+### 5. 이탈 감지
+실측이 보정된 기대치를 1.2 이상 초과하면 알림이 생성됩니다. 무엇이 얼마나 달랐는지 숫자로 보여주고(`붓기 예상 0.6 → 기록 3`), 불안을 키우지 않는 다음 행동을 제시합니다.
+
+### 6. 시술마다 다른 회복 곡선
+리프팅 · 레이저 토닝 · 스킨부스터 · 필러 · 보툴리눔 톡신 · 화학적 필링 6종의 프로토콜이 각각 다른 곡선, 다른 금기 기간, 다른 단계 설명을 갖습니다. 레이저 토닝은 각질이 주인공이고 "각질 뜯기"가 최우선 금기지만, 필러는 붓기와 "얼굴 마사지"가 핵심입니다. 온보딩에서 고른 시술이 곧바로 다른 화면으로 이어집니다.
+
+### 7. 필요할 때만 클리닉으로
+사용자가 켜둔 경우에만, **이탈이 감지된 알림 1건 + 최근 3일 기록**이 시술받은 의료기관에 전달됩니다. 전화로 상태를 설명할 필요가 없어지고, 클리닉은 불필요한 내원과 늦은 내원을 모두 줄입니다.
+
+---
+
+## 기존 서비스와 다른 지점
+
+| | 기존 뷰티·웰니스 앱 | AfterGlow |
+| :-- | :-- | :-- |
+| 시간축 | 시술 **전** (탐색·예약) | 시술 **후** 90일 |
+| 기록 방식 | 사진 업로드 + 설문 | 탭 5번, 30초 |
+| AI 역할 | 사진으로 상태 판정 | 오늘의 행동 안내 생성 |
+| 개인화 기준 | 피부 타입 | 시술 종류 × 경과일 × 수면/HRV × 환경 |
+| 리포트 | 조회용 정지 문서 | 매일 갱신되는 케어 플랜 |
+| 클리닉 관계 | 예약 알선 | 이탈 시 리콜 |
+
+---
+
+## 기술 구조
+
+```
+app/
+├── page.tsx                # 랜딩
+├── (auth)/                 # 로그인 · 회원가입 · 온보딩(시술 등록)
+└── (app)/
+    ├── today/              # 홈: D+N, 케어 카드, 체크인 CTA
+    ├── checkin/            # 30초 체크인 플로우
+    ├── recovery/           # 회복 곡선 · 단계별 프로토콜 · 알림 이력
+    ├── vitals/             # 웨어러블 · 환경 · 상관 분석
+    ├── journal/            # 체크인 기록 · 채워넣기 · 지난 여정 아카이브
+    ├── profile/
+    └── settings/           # 알림 · 공유 동의 · 데이터 삭제
+
+lib/
+├── recovery.ts             # 회복 엔진 (곡선 생성, 보정, 이탈 감지, 상관)
+├── careCard.ts             # 케어 카드 생성기 + LLM 프롬프트 빌더
+└── utils.ts
+
+services/
+├── client.ts               # 유일한 네트워크 경계. mock ↔ 실서버 전환 지점
+├── auth.ts / journey.ts / checkin.ts / vitals.ts / archive.ts
+
+types/index.ts              # 전체 도메인 타입
+mock/protocols.ts           # 시술 6종 케어 프로토콜 (마스터 데이터)
+mock/data.ts                # 임의 생성 더미 데이터셋
+services/session.ts         # 목데이터 모드의 여정 상태 (데모 시드 ↔ 사용자 여정)
+store/useCheckinStore.ts    # 체크인 입력 상태 (zustand)
+docs/frontend-backend-contract.md
+```
+
+**Next.js 14 (App Router) · TypeScript · Tailwind · Recharts · Framer Motion · zustand · Supabase · Claude API**
+
+```
+lib/supabase/            # 브라우저/서버 클라이언트, 행↔도메인 매퍼, DB 타입
+services/supabase-repo.ts  # Supabase 데이터 소스 구현
+app/api/care-card/       # Claude API 호출 + 안전 검증 (서버 전용)
+supabase/migrations/     # 스키마 · RLS · 동의 강제 트리거
+middleware.ts            # Supabase 세션 갱신
+```
+
+### 설계 원칙
+
+1. **회복 엔진은 순수 함수** — `lib/recovery.ts`의 모든 계산은 부수효과가 없습니다. 백엔드가 같은 규칙을 그대로 재현할 수 있고, 프론트가 보여주는 숫자는 하드코딩된 목업이 아니라 실제 계산 결과입니다.
+2. **데이터 소스는 교체 가능한 한 겹** — 페이지는 `services/*.ts`만 호출하고, 그 안에서 mock과 `services/supabase-repo.ts` 중 하나가 선택됩니다(`lib/env.ts#dataSource`). 소스를 바꿔도 페이지 코드는 한 줄도 바뀌지 않습니다.
+3. **모바일 퍼스트** — 회복 체크인은 침대에서, 한 손으로 합니다. 모든 탭 타깃 최소 48px, 하단 안전 영역 대응.
+4. **의료 안전 표현** — 진단·질병·확정 표현을 쓰지 않습니다. 모든 계산 결과에 `<MedicalDisclaimer />`와 근거를 함께 노출합니다.
+5. **빈 화면을 만들지 않습니다** — 웨어러블이 없으면 수동 입력으로, LLM이 실패하면 로컬 생성기로, 지난 기록이 비면 채워넣기로 이어집니다. 모든 막다른 길에 다음 행동이 있습니다.
+
+### 완결된 사용자 여정
+
+```
+가입 → 온보딩(시술 6종 중 선택 + 시술일 + 클리닉 + 동의)
+     → 오늘(D+N, 케어 카드, 오늘 풀린 금기)
+     → 30초 체크인 → 즉시 피드백(어제 대비 개선 / 이탈 감지)
+     → 회복 곡선(예상 vs 실측) → 이탈 시 클리닉 공유(동의 필수)
+     → 컨디션(웨어러블 or 수동 입력 → 회복 속도 보정)
+     → 기록(빈 날 채워넣기, 사진 비교)
+     → 여정 마무리(만족도 + 자동 추출 인사이트) → 아카이브
+     → 다음 시술 등록
+```
+
+---
+
+## 실행
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+http://localhost:3000 — 랜딩에서 "데모 둘러보기"를 누르면 D+12 시점의 회복 여정으로 들어갑니다.
+
+데모 시나리오에는 **D+8에 야근·회식으로 붓기가 재상승해 이탈이 감지되고, 클리닉이 응답한 사건**이 심어져 있습니다. `/recovery`와 `/vitals`에서 그 인과가 이어지는 것을 확인할 수 있습니다.
+
+"내 시술 등록하고 시작하기"로 온보딩을 마치면 데모 시드가 사라지고 **실제로 D+0부터 시작하는 빈 여정**이 만들어집니다. 시술 종류를 바꾸면 곡선·금기·단계 설명이 전부 달라지는 것을 바로 확인할 수 있습니다. 랜딩의 "데모 둘러보기"를 다시 누르면 데모 시나리오로 돌아옵니다.
+
+홈 화면에 추가하면 PWA로 설치되어 `/today`로 바로 열립니다.
+
+### 환경 변수 — 목업 키로 시작해서 나중에 교체
+
+`.env.local.example`을 `.env.local`로 복사하면 바로 실행된다. 모든 키는 자리표시자이고, **실제 값으로 바뀌는 순간 자동으로 실서비스 경로로 전환**된다. 코드 수정은 없다.
+
+| 변수 | 기본값(목업) | 실제 값을 넣으면 |
+| :-- | :-- | :-- |
+| `NEXT_PUBLIC_DATA_SOURCE` | `mock` | `supabase`로 바꾸면 DB에서 읽는다 |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://mock-project-ref.supabase.co` | Supabase 프로젝트에 연결 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `mock-anon-key-replace-me` | 〃 |
+| `SUPABASE_SERVICE_ROLE_KEY` | `mock-service-role-key-replace-me` | 서버 전용 작업(클리닉 응답 저장) |
+| `ANTHROPIC_API_KEY` | `mock-anthropic-key-replace-me` | 케어 카드 문장을 LLM이 생성 |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5` | 사용할 모델 |
+
+안전장치가 두 겹이다.
+
+1. `NEXT_PUBLIC_DATA_SOURCE=supabase`로 두어도 키가 목업이면 **자동으로 mock으로 강등**된다. 데모 중 흰 화면이 뜨지 않는다.
+2. `ANTHROPIC_API_KEY`가 없거나 목업이면 `/api/care-card`가 **로컬 생성기 결과를 200으로 반환**한다. 카드가 비는 일이 없다.
+
+지금 어느 모드로 돌고 있는지는 사이드바와 설정 화면의 배지(`데모 데이터` / `Supabase 연결됨`)에 항상 표시된다.
+
+### Supabase 연결하기
+
+1. Supabase 프로젝트를 만들고 `supabase/migrations/20260819000001_init_afterglow.sql`을 SQL Editor에 붙여 실행한다.
+   - 테이블 · RLS 정책 · `checkin-photos` 비공개 버킷 · 회원가입 시 프로필 자동 생성 트리거가 한 번에 만들어진다.
+2. `.env.local`의 Supabase 키 3개를 실제 값으로 교체하고 `NEXT_PUBLIC_DATA_SOURCE=supabase`로 바꾼다.
+3. 앱에서 회원가입 → 온보딩(시술 등록)을 하면 회복 여정이 생성된다.
+
+DB 레벨 안전장치:
+
+- 모든 사용자 테이블에 RLS. 본인 행 외에는 조회조차 되지 않는다
+- `recovery_alerts.shared_with_clinic`은 트리거가 막는다. `profiles.clinic_sharing_consent`가 `false`면 공유 시도가 `CONSENT_REQUIRED` 예외로 거절된다 — 프론트 버그로도 뚫리지 않는다
+- 체크인 사진은 비공개 버킷 + 사용자 폴더 정책. 서명 URL로만 접근
+
+케어 프로토콜(시술별 회복 규칙)은 사용자 데이터가 아니라 마스터 데이터라 앱 번들에 포함되어 있다. DB 왕복 없이 곡선이 그려지고, 오프라인에서도 오늘의 금기가 계산된다. 프로토콜이 늘어나면 `care_protocols` 테이블에서 받아 `mock/data.ts#protocolRegistry`를 덮어쓰면 된다.
+
+---
+
+## 데이터 및 개인정보
+
+**본 저장소의 모든 데이터는 시연을 위해 임의로 생성된 더미입니다.** 실제 고객 데이터나 실제 의료기관 정보를 포함하지 않습니다.
+
+시술명 · 시술일 · 방문 병원은 개인정보보호법상 **건강에 관한 민감정보**입니다. 처리 방침은 [docs/frontend-backend-contract.md](docs/frontend-backend-contract.md) 5장에 정리되어 있습니다. 요약하면:
+
+- 온보딩에서 별도 동의 항목으로 분리 수집, 기본값은 **비동의**
+- 클리닉 공유는 동의 + 이탈 감지 시에만, 알림 1건 + 최근 3일 기록으로 범위 한정
+- 웨어러블은 수면·HRV·안정시 심박·걸음 수만 읽고 위치는 수집하지 않음
+- 설정에서 전체 내보내기 및 하드 딜리트 가능
+
+---
+
+## 의료적 안내
+
+AfterGlow는 시술 후 회복 과정을 기록하고 안내하는 서비스로, 의료적 진단이나 치료를 대신하지 않습니다. 회복 곡선과 케어 카드는 입력된 기록과 시술 프로토콜을 바탕으로 계산된 참고 정보이며, 회복 속도 보정 계수는 의학적 확정 수치가 아닌 서비스 내부 가중치입니다. 통증이 갑자기 심해지거나 한쪽만 붓는 등 평소와 다른 변화가 있으면 시술받은 의료기관에 상담을 요청하세요.

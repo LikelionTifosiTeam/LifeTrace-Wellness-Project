@@ -1,284 +1,293 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Check, ArrowRight, ArrowLeft, Building2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Check, Info, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { ConcernType } from '@/types';
+import { Input } from '@/components/ui/input';
+import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
 import { authService } from '@/services/auth';
+import { procedureOptions, DEMO_TODAY } from '@/mock/data';
+import { ProcedureCategory } from '@/types';
+import { cn, daysBetween } from '@/lib/utils';
 
-const ALL_CONCERNS: ConcernType[] = [
-  '여드름', '붉은기', '색소', '모공', '피부결', '건조함', '유분', '탄력', '주름', '기타'
-];
-
-const GOALS = [
-  '피부 상태 관리', '피부과 탐색', '치료 이력 관리', '미용 관리', '전체 관리'
-];
+const STEPS = ['시술', '날짜', '클리닉', '동의'] as const;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState<number>(1);
-  const [selectedConcerns, setSelectedConcerns] = useState<ConcernType[]>(['여드름', '붉은기']);
-  const [primaryConcern, setPrimaryConcern] = useState<ConcernType>('여드름');
-  const [hospitalExp, setHospitalExp] = useState<boolean>(true);
-  const [recentVisit, setRecentVisit] = useState<string>('최근 1개월 이내');
-  const [usageGoal, setUsageGoal] = useState<string>('전체 관리');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const toggleConcern = (concern: ConcernType) => {
-    if (selectedConcerns.includes(concern)) {
-      if (selectedConcerns.length === 1) return; // Keep at least one
-      const updated = selectedConcerns.filter((c) => c !== concern);
-      setSelectedConcerns(updated);
-      if (primaryConcern === concern) {
-        setPrimaryConcern(updated[0]);
-      }
-    } else {
-      setSelectedConcerns([...selectedConcerns, concern]);
-    }
-  };
+  const [procedure, setProcedure] = useState<(typeof procedureOptions)[number] | null>(null);
+  const [procedureDate, setProcedureDate] = useState('');
+  const [clinicName, setClinicName] = useState('');
+  const [reminderTime, setReminderTime] = useState('21:30');
+  const [clinicSharing, setClinicSharing] = useState(false);
+  const [connectWearable, setConnectWearable] = useState(true);
 
-  const handleFinish = async () => {
+  const elapsed = procedureDate ? daysBetween(procedureDate, DEMO_TODAY) : null;
+
+  const canNext =
+    (step === 0 && procedure) ||
+    (step === 1 && procedureDate && elapsed !== null && elapsed >= 0) ||
+    (step === 2 && clinicName.trim().length > 0) ||
+    step === 3;
+
+  const handleSubmit = async () => {
+    if (!procedure || !procedureDate) return;
     setIsSubmitting(true);
     try {
-      await authService.saveOnboardingProfile({
-        concerns: selectedConcerns,
-        primaryConcern,
-        hospitalExperience: hospitalExp,
-        recentVisitPeriod: recentVisit,
-        usageGoal,
+      await authService.startJourney({
+        protocolId: procedure.protocolId,
+        procedureName: procedure.name,
+        category: procedure.category as ProcedureCategory,
+        procedureDate,
+        clinicName,
+        clinicSharingConsent: clinicSharing,
+        checkinReminderTime: reminderTime,
+        connectWearable,
       });
-      setIsCompleted(true);
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1200);
-    } catch {
+      router.push('/today');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isCompleted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center p-8 space-y-4 bg-white border border-brand-200 shadow-xl rounded-3xl animate-in zoom-in-95">
-          <div className="w-16 h-16 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center mx-auto border-2 border-brand-200">
-            <Check className="w-8 h-8" />
-          </div>
-          <Badge variant="brand">프로필 생성이 완료되었습니다</Badge>
-          <h2 className="text-2xl font-black text-slate-900">나의 피부 프로필 완성!</h2>
-          <p className="text-xs text-slate-500">
-            맞춤 대시보드와 AI 인사이트 환경으로 이동합니다...
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-xl bg-white border border-slate-200 p-8 space-y-8 shadow-float rounded-3xl">
-        {/* Progress Header */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-brand-600 tracking-wider">
-              STEP {step} / 4
-            </span>
-            <span className="text-xs font-semibold text-slate-400">피부 맞춤 설정</span>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="sticky top-0 z-20 bg-white border-b border-slate-200/80">
+        <div className="max-w-md mx-auto px-4 h-14 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => (step === 0 ? router.push('/') : setStep((s) => s - 1))}
+            className="p-2 -ml-2 rounded-xl text-slate-500 hover:bg-slate-100"
+            aria-label="이전"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 flex gap-1">
+            {STEPS.map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'h-1.5 flex-1 rounded-full transition-colors',
+                  i <= step ? 'bg-brand-600' : 'bg-slate-200'
+                )}
+              />
+            ))}
           </div>
-          <Progress value={(step / 4) * 100} />
+          <span className="text-xs font-semibold text-slate-400 shrink-0">
+            {step + 1}/{STEPS.length}
+          </span>
         </div>
+      </header>
 
-        {/* Step 1: Concerns (Multiple Selection) */}
-        {step === 1 && (
-          <div className="space-y-6 animate-in fade-in">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">평소 어떤 피부 고민이 있으신가요?</h2>
-              <p className="text-xs text-slate-500 mt-1">해당되는 고민을 모두 선택해 주세요. (다중 선택 가능)</p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {ALL_CONCERNS.map((concern) => {
-                const isSelected = selectedConcerns.includes(concern);
-                return (
-                  <button
-                    key={concern}
-                    type="button"
-                    onClick={() => toggleConcern(concern)}
-                    className={`p-3.5 rounded-2xl border text-sm font-semibold flex items-center justify-between transition-all ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-50/80 text-brand-800 shadow-xs'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    <span>{concern}</span>
-                    {isSelected && <Check className="w-4 h-4 text-brand-600 shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Primary Concern */}
-        {step === 2 && (
-          <div className="space-y-6 animate-in fade-in">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">현재 가장 집중 관리가 필요한 고민은 무엇인가요?</h2>
-              <p className="text-xs text-slate-500 mt-1">선택하신 고민 중 단 하나의 핵심 고민을 지정해 주세요.</p>
-            </div>
-
-            <div className="space-y-2.5">
-              {selectedConcerns.map((concern) => {
-                const isSelected = primaryConcern === concern;
-                return (
-                  <button
-                    key={concern}
-                    type="button"
-                    onClick={() => setPrimaryConcern(concern)}
-                    className={`w-full p-4 rounded-2xl border text-sm font-semibold flex items-center justify-between transition-all ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-50/80 text-brand-800 shadow-xs ring-1 ring-brand-500'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    <span>{concern}</span>
-                    {isSelected && <Badge variant="brand">주 고민</Badge>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Hospital Experience */}
-        {step === 3 && (
-          <div className="space-y-6 animate-in fade-in">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">과거 피부과 방문 및 치료 경험이 있으신가요?</h2>
-              <p className="text-xs text-slate-500 mt-1">이력 데이터를 통해 AI 분석의 정확도가 더 높아집니다.</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setHospitalExp(true)}
-                className={`p-5 rounded-2xl border text-center space-y-2 transition-all ${
-                  hospitalExp
-                    ? 'border-brand-500 bg-brand-50/80 text-brand-900 ring-1 ring-brand-500'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <Building2 className={`w-6 h-6 mx-auto ${hospitalExp ? 'text-brand-600' : 'text-slate-400'}`} />
-                <div className="font-bold text-sm">있음</div>
-                <div className="text-[11px] text-slate-500">피부과 진료/시술 경험 있음</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setHospitalExp(false)}
-                className={`p-5 rounded-2xl border text-center space-y-2 transition-all ${
-                  !hospitalExp
-                    ? 'border-brand-500 bg-brand-50/80 text-brand-900 ring-1 ring-brand-500'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <Sparkles className={`w-6 h-6 mx-auto ${!hospitalExp ? 'text-brand-600' : 'text-slate-400'}`} />
-                <div className="font-bold text-sm">없음</div>
-                <div className="text-[11px] text-slate-500">피부과 방문 경험 없음</div>
-              </button>
-            </div>
-
-            {hospitalExp && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <label className="block text-xs font-semibold text-slate-700">최근 방문 시기</label>
-                <select
-                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800"
-                  value={recentVisit}
-                  onChange={(e) => setRecentVisit(e.target.value)}
-                >
-                  <option value="최근 1개월 이내">최근 1개월 이내</option>
-                  <option value="최근 6개월 이내">최근 6개월 이내</option>
-                  <option value="최근 1년 이내">최근 1년 이내</option>
-                  <option value="1년 이상 전">1년 이상 전</option>
-                </select>
-              </div>
+      <div className="flex-1 w-full max-w-md mx-auto px-4 py-6 pb-32">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+            {step === 0 && (
+              <>
+                <h1 className="text-2xl font-extrabold tracking-tight">어떤 시술을 받으셨나요?</h1>
+                <p className="text-sm text-slate-500 mt-1.5 mb-6">
+                  시술 종류에 따라 회복 곡선과 금기 기간이 달라집니다.
+                </p>
+                <div className="space-y-2">
+                  {procedureOptions.map((p) => {
+                    const selected = procedure?.id === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setProcedure(p);
+                          setTimeout(() => setStep(1), 180);
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border text-left transition-all min-h-[56px]',
+                          selected
+                            ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">{p.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            다운타임 약 {p.downtime}일 · 결과 체감 D+{p.resultVisibleFromDay}부터
+                          </p>
+                        </div>
+                        {selected && <Check className="w-4 h-4 text-brand-600 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
-          </div>
-        )}
 
-        {/* Step 4: Usage Goal */}
-        {step === 4 && (
-          <div className="space-y-6 animate-in fade-in">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">DermaTrace AI의 주요 사용 목적은 무엇인가요?</h2>
-              <p className="text-xs text-slate-500 mt-1">목적에 맞게 맞춤형 홈 화면과 인사이트 탭을 구성해 드립니다.</p>
-            </div>
+            {step === 1 && (
+              <>
+                <h1 className="text-2xl font-extrabold tracking-tight">언제 받으셨나요?</h1>
+                <p className="text-sm text-slate-500 mt-1.5 mb-6">
+                  이 날짜가 D+0 기준이 됩니다.
+                </p>
+                <Input
+                  type="date"
+                  label="시술 날짜"
+                  max={DEMO_TODAY}
+                  value={procedureDate}
+                  onChange={(e) => setProcedureDate(e.target.value)}
+                />
+                {elapsed !== null && elapsed >= 0 && (
+                  <Card className="mt-4 bg-brand-50/70 border-brand-200">
+                    <p className="text-sm font-bold text-brand-900">오늘은 D+{elapsed}입니다</p>
+                    <p className="text-xs text-brand-800 mt-1">
+                      지난 {elapsed}일치는 기억나는 만큼만 나중에 채워 넣어도 됩니다.
+                    </p>
+                  </Card>
+                )}
+                {elapsed !== null && elapsed < 0 && (
+                  <p className="text-xs text-red-500 font-medium mt-2">
+                    시술 날짜는 오늘보다 이후일 수 없습니다.
+                  </p>
+                )}
+              </>
+            )}
 
-            <div className="space-y-2.5">
-              {GOALS.map((goal) => {
-                const isSelected = usageGoal === goal;
-                return (
+            {step === 2 && (
+              <>
+                <h1 className="text-2xl font-extrabold tracking-tight">어디에서 받으셨나요?</h1>
+                <p className="text-sm text-slate-500 mt-1.5 mb-6">
+                  회복이 예상 범위를 벗어났을 때 상담을 연결할 곳입니다.
+                </p>
+                <Input
+                  label="클리닉 이름"
+                  placeholder="예: 웰니스하우스 강남 클리닉"
+                  value={clinicName}
+                  onChange={(e) => setClinicName(e.target.value)}
+                />
+                <Input
+                  type="time"
+                  label="매일 체크인 알림 시간"
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
+                  className="mt-4"
+                />
+                <p className="flex items-start gap-2 text-xs text-slate-500 leading-relaxed mt-3">
+                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  회복 초기에는 매일, 4주 이후에는 주 2회로 알림이 자동으로 줄어듭니다.
+                </p>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <h1 className="text-2xl font-extrabold tracking-tight">
+                  기록을 어떻게 쓸지 정해주세요
+                </h1>
+                <p className="text-sm text-slate-500 mt-1.5 mb-6">
+                  둘 다 끄고 시작해도 됩니다. 나중에 언제든 바꿀 수 있습니다.
+                </p>
+
+                <div className="space-y-3">
                   <button
-                    key={goal}
                     type="button"
-                    onClick={() => setUsageGoal(goal)}
-                    className={`w-full p-4 rounded-2xl border text-sm font-semibold flex items-center justify-between transition-all ${
-                      isSelected
-                        ? 'border-brand-500 bg-brand-50/80 text-brand-800 shadow-xs ring-1 ring-brand-500'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
+                    onClick={() => setClinicSharing((v) => !v)}
+                    className={cn(
+                      'w-full flex items-start gap-3 p-4 rounded-2xl border text-left transition-all',
+                      clinicSharing ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white'
+                    )}
                   >
-                    <span>{goal}</span>
-                    {isSelected && <Check className="w-4 h-4 text-brand-600" />}
+                    <span
+                      className={cn(
+                        'w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5',
+                        clinicSharing ? 'bg-brand-600 text-white' : 'bg-slate-200'
+                      )}
+                    >
+                      {clinicSharing && <Check className="w-3.5 h-3.5" />}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        이탈 감지 시 클리닉에 기록 공유
+                      </p>
+                      <p className="text-xs text-slate-600 leading-relaxed mt-1">
+                        회복이 예상 범위를 벗어난 날의 기록만 전달됩니다. 평상시 기록은 공유되지
+                        않습니다.
+                      </p>
+                    </div>
                   </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
-        {/* Action Controls */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          {step > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setConnectWearable((v) => !v)}
+                    className={cn(
+                      'w-full flex items-start gap-3 p-4 rounded-2xl border text-left transition-all',
+                      connectWearable ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5',
+                        connectWearable ? 'bg-brand-600 text-white' : 'bg-slate-200'
+                      )}
+                    >
+                      {connectWearable && <Check className="w-3.5 h-3.5" />}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">웨어러블 연동</p>
+                      <p className="text-xs text-slate-600 leading-relaxed mt-1">
+                        수면과 심박변이도만 읽어 회복 속도 기대치를 보정합니다.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                <div className="flex items-start gap-2 p-4 rounded-xl bg-slate-100/70 border border-slate-200 mt-4 text-xs text-slate-600 leading-relaxed">
+                  <Shield className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
+                  <span>
+                    시술명·시술일·클리닉 정보는 개인정보보호법상 민감정보입니다. 회원님의 명시적
+                    동의 없이는 어떤 제3자에게도 제공되지 않으며, 설정에서 언제든 전체 삭제할 수
+                    있습니다.
+                  </span>
+                </div>
+
+                <MedicalDisclaimer className="mt-4" compact />
+              </>
+            )}
+        </motion.div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto">
+          {step < STEPS.length - 1 ? (
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => setStep(step - 1)}
-              className="gap-2 text-xs font-semibold"
+              size="lg"
+              className="w-full"
+              disabled={!canNext}
+              onClick={() => setStep((s) => s + 1)}
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>이전</span>
+              다음
             </Button>
           ) : (
-            <div />
+            <Button size="lg" className="w-full" isLoading={isSubmitting} onClick={handleSubmit}>
+              회복 여정 시작하기
+            </Button>
           )}
-
-          {step < 4 ? (
-            <Button
-              type="button"
-              onClick={() => setStep(step + 1)}
-              className="gap-2 font-bold bg-brand-600 hover:bg-brand-700 text-white"
-            >
-              <span>다음</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleFinish}
-              isLoading={isSubmitting}
-              className="gap-2 font-bold bg-brand-600 hover:bg-brand-700 text-white"
-            >
-              <span>완료 및 시작하기</span>
-              <Check className="w-4 h-4" />
-            </Button>
+          {step === 0 && (
+            <p className="text-center text-xs text-slate-400 mt-2">
+              이미 계정이 있나요?{' '}
+              <Link href="/login" className="font-semibold text-brand-700">
+                로그인
+              </Link>
+            </p>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

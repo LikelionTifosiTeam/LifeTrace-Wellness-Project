@@ -1,273 +1,190 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import {
-  Sparkles,
-  ArrowRight,
   Activity,
-  ShieldCheck,
-  Search,
-  CalendarCheck,
-  TrendingUp,
-  Brain,
-  CheckCircle2,
-  ChevronRight
+  ArrowRight,
+  Bell,
+  LineChart,
+  Sparkle,
+  Stethoscope,
+  Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { MedicalDisclaimer } from '@/components/common/MedicalDisclaimer';
+import { DemoEntryButton } from '@/components/common/DemoEntryButton';
+
+const problems = [
+  {
+    title: '“이게 정상인가요?”',
+    body: '시술 다음 날부터 가장 자주 하는 질문. 답을 아는 사람은 클리닉에 있고, 불안한 사람은 집에 있습니다.',
+  },
+  {
+    title: '리포트는 조회만 가능합니다',
+    body: '종이 대신 앱으로 받았지만 여전히 정지된 문서입니다. 오늘 내 상태에 맞춰 바뀌지 않습니다.',
+  },
+  {
+    title: '금기는 첫날에만 안내됩니다',
+    body: '“2주간 사우나 금지”를 12일째에 기억하는 사람은 없습니다. 그리고 언제 다시 해도 되는지는 아무도 알려주지 않습니다.',
+  },
+];
+
+const features = [
+  {
+    icon: Timer,
+    title: '하루 30초, 사진 없이',
+    body: '붓기·붉은기·통증·각질·당김 5가지를 탭 한 번씩. 사진은 선택입니다. 매일 열게 만드는 유일한 방법은 가볍게 만드는 것입니다.',
+  },
+  {
+    icon: LineChart,
+    title: '내 회복이 곡선 안에 있는지',
+    body: '같은 시술의 예상 회복 곡선 위에 내 기록을 겹칩니다. “정상인가요?”에 매일 답이 나옵니다.',
+  },
+  {
+    icon: Sparkle,
+    title: '매일 새로 쓰이는 케어 카드',
+    body: '경과일 + 어제 기록 + 수면·HRV + 자외선·습도를 읽고 오늘 피할 것과 할 것을 생성합니다. 그리고 오늘 풀린 금기를 먼저 알려줍니다.',
+  },
+  {
+    icon: Activity,
+    title: '잠이 부족하면 회복 기준도 바뀝니다',
+    body: '수면과 심박변이도로 회복 속도 기대치를 개인에 맞게 보정합니다. 피부·건강·일상이 한 곡선에서 만납니다.',
+  },
+  {
+    icon: Bell,
+    title: '벗어나면 먼저 알아챕니다',
+    body: '곡선을 벗어난 날, 무엇이 얼마나 달랐는지 짚어줍니다. 불안을 키우지 않고 다음 행동을 제시합니다.',
+  },
+  {
+    icon: Stethoscope,
+    title: '필요할 때만 클리닉으로',
+    body: '회원님이 켜둔 경우에만, 이탈이 감지된 기록이 시술받은 의료기관에 전달됩니다. 전화로 설명할 필요가 없습니다.',
+  },
+];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 lg:px-12 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white shadow-sm">
-            <Activity className="w-5 h-5" />
+    <div className="min-h-screen bg-white text-slate-900">
+      <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white">
+              <Sparkle className="w-4 h-4" />
+            </div>
+            <span className="font-extrabold tracking-tight">AfterGlow</span>
           </div>
-          <span className="font-extrabold text-lg tracking-tight text-slate-900">
-            DermaTrace <span className="text-brand-600 font-bold">AI</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login">
-            <Button variant="ghost" size="sm" className="font-semibold text-slate-700">
-              로그인
-            </Button>
-          </Link>
-          <Link href="/onboarding">
-            <Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white font-semibold">
-              시작하기
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/login">
+              <Button variant="ghost" size="sm">
+                로그인
+              </Button>
+            </Link>
+            <Link href="/signup">
+              <Button size="sm">시작하기</Button>
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-12 pb-20 px-6 lg:px-12 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div className="lg:col-span-7 space-y-6">
-          <Badge variant="brand" className="px-3 py-1 text-xs gap-1.5 font-semibold">
-            <Sparkles className="w-3.5 h-3.5" /> 개인화 피부 관리 AI 플랫폼
-          </Badge>
-          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.25]">
-            내 피부의 변화부터,<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-teal-600 to-accent-600">
-              나에게 맞는 관리의 다음 단계까지
+      <main>
+        {/* Hero */}
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-20 text-center">
+          <p className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-xs font-semibold text-brand-700">
+            시술 전이 아니라, 시술 다음 날부터
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tighter leading-[1.15] mt-5">
+            시술은 하루,
+            <br />
+            <span className="bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent">
+              회복은 90일입니다
             </span>
           </h1>
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl font-normal">
-            피부 상태부터 치료 이력까지, 흩어진 정보를 하나로 연결해 나만의 피부 관리 여정을 만들어보세요.
+          <p className="text-base text-slate-600 leading-relaxed mt-5 max-w-xl mx-auto">
+            AfterGlow는 시술 다음 날부터 90일 동안 매일 30초 기록으로 회복을 함께 따라갑니다.
+            정지된 리포트 대신, 오늘 내 상태에 맞춰 매일 다시 쓰이는 케어 플랜을 드립니다.
           </p>
-
-          <div className="flex flex-wrap items-center gap-4 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <Link href="/onboarding">
-              <Button size="lg" className="bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-md gap-2">
-                <span>내 피부 분석 시작하기</span>
+              <Button size="lg" className="w-full sm:w-auto gap-2">
+                내 시술 등록하고 시작하기
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
-            <Link href="/dashboard">
-              <Button size="lg" variant="outline" className="font-semibold text-slate-700 bg-white">
-                서비스 둘러보기
-              </Button>
-            </Link>
+            <DemoEntryButton />
           </div>
+        </section>
 
-          <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 font-medium">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-brand-600" />
-              <span>전문의 진료 연결</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-brand-600" />
-              <span>치료 타임라인 추적</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-brand-600" />
-              <span>데이터 비보호 안심 관리</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Hero Right: AI Skin Analysis UI Mockup */}
-        <div className="lg:col-span-5 relative">
-          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-brand-500 to-accent-500 opacity-20 blur-xl"></div>
-          <Card className="relative bg-white border border-slate-200/90 shadow-xl rounded-3xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-brand-500"></div>
-                <span className="text-xs font-bold text-slate-800">Skin Condition Summary</span>
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">실시간 AI 파악</span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-xs font-semibold text-slate-700">여드름 (Acne)</span>
-                <span className="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md">68 / 100</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-xs font-semibold text-slate-700">붉은기 (Redness)</span>
-                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">52 / 100</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-xs font-semibold text-slate-700">피부결 (Texture)</span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">74 / 100</span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-brand-50/80 border border-brand-100 flex items-start gap-3">
-              <TrendingUp className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-brand-900">최근 14일 변화 탐색</p>
-                <p className="text-[11px] text-brand-700 mt-0.5 leading-snug">
-                  "최근 14일 동안 트러블 지수가 18% 증가했습니다. 수면패턴 감소 연관성 관찰."
-                </p>
-              </div>
-            </div>
-
-            <Link href="/analysis/result">
-              <Button size="md" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold gap-2">
-                <span>분석 결과 보기</span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </Card>
-        </div>
-      </section>
-
-      {/* Section 2: Why DermaTrace AI */}
-      <section className="py-16 bg-white border-y border-slate-200/80 px-6 lg:px-12">
-        <div className="max-w-7xl mx-auto space-y-12">
-          <div className="text-center space-y-3">
-            <Badge variant="brand">WHY DERMATRACE AI</Badge>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900">
-              한 번 분석하고 끝나는 피부 AI가 아닌,<br />
-              사용할수록 나를 이해하는 AI
+        {/* Problem */}
+        <section className="bg-slate-50 border-y border-slate-200/70 py-16">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <h2 className="text-2xl font-extrabold tracking-tight text-center">
+              시술 후 90일은 아무도 함께 있지 않습니다
             </h2>
+            <div className="grid sm:grid-cols-3 gap-4 mt-8">
+              {problems.map((p) => (
+                <div
+                  key={p.title}
+                  className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-soft"
+                >
+                  <h3 className="text-sm font-bold text-slate-900">{p.title}</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mt-2">{p.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card hoverEffect className="p-6 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-black text-lg border border-brand-100">
-                <Brain className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">ANALYZE</h3>
-              <p className="text-sm font-medium text-slate-800">피부 상태를 이해하고</p>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                사진 한 장과 생활 기록으로 피부 고민의 변화 수치를 객관적인 데이터로 다차원 분석합니다.
-              </p>
-            </Card>
-
-            <Card hoverEffect className="p-6 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent-50 text-accent-600 flex items-center justify-center font-black text-lg border border-accent-100">
-                <Search className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">GUIDE</h3>
-              <p className="text-sm font-medium text-slate-800">다음 관리 방향을 확인하고</p>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                단정적 진단 대신, 전문 의료진 상담 및 피부과 탐색 등 현실적인 케어 가이드를 제안합니다.
-              </p>
-            </Card>
-
-            <Card hoverEffect className="p-6 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black text-lg border border-emerald-100">
-                <CalendarCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">LEARN</h3>
-              <p className="text-sm font-medium text-slate-800">나의 치료 경험을 학습합니다</p>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                시술 및 피부과 방문 이력을 기록하면 AI가 나의 반응 패턴을 학습하여 지속 관리 효과를 증대합니다.
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: How It Works */}
-      <section className="py-20 px-6 lg:px-12 max-w-7xl mx-auto w-full space-y-12">
-        <div className="text-center space-y-3">
-          <Badge variant="accent">HOW IT WORKS</Badge>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            5단계로 연결되는 개인화 피부 여정
+        {/* Features */}
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+          <h2 className="text-2xl font-extrabold tracking-tight text-center">
+            매일 열게 되는 이유
           </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {[
-            { step: '1', title: '피부 상태 기록', desc: '사진 및 생활 데이터 입력' },
-            { step: '2', title: 'AI 상태 분석', desc: '변화율 및 관련 요인 탐색' },
-            { step: '3', title: '의료기관 탐색', desc: '내 주변 전문 피부과 연결' },
-            { step: '4', title: '치료 이력 기록', desc: '방문 시술 & 변화 저장' },
-            { step: '5', title: '개인화 학습', desc: '나만의 피부 패턴 완성' },
-          ].map((item) => (
-            <Card key={item.step} className="p-4 text-center space-y-2 relative">
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center mx-auto">
-                {item.step}
-              </div>
-              <h4 className="text-sm font-bold text-slate-900">{item.title}</h4>
-              <p className="text-xs text-slate-500">{item.desc}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Section 4: Timeline Preview */}
-      <section className="py-16 bg-slate-100/60 border-t border-slate-200/80 px-6 lg:px-12">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h3 className="text-xl font-bold text-slate-900">나의 피부 여정 (Timeline Preview)</h3>
-            <p className="text-xs text-slate-500">흩어진 피부 기록을 한 눈에 확인하세요</p>
-          </div>
-
-          <div className="space-y-4">
-            <Card className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2.5 py-1 rounded-lg">8월 12일</span>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">피부 상태 기록</p>
-                  <p className="text-xs text-slate-500">여드름 68점 (안정 유지)</p>
+          <div className="grid sm:grid-cols-2 gap-4 mt-8">
+            {features.map((f) => {
+              const Icon = f.icon;
+              return (
+                <div
+                  key={f.title}
+                  className="p-5 rounded-2xl border border-slate-200/80 shadow-soft"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">{f.title}</h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mt-2">{f.body}</p>
                 </div>
-              </div>
-              <Badge variant="neutral">피부 분석</Badge>
-            </Card>
-
-            <Card className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-accent-600 bg-accent-50 px-2.5 py-1 rounded-lg">8월 10일</span>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">더마블라썸 피부과의원 방문</p>
-                  <p className="text-xs text-slate-500">여드름 압출 및 진정 레이저 시술</p>
-                </div>
-              </div>
-              <Badge variant="brand">치료 기록</Badge>
-            </Card>
+              );
+            })}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Section 5: Safety & Trust */}
-      <section className="py-12 px-6 lg:px-12 max-w-4xl mx-auto w-full">
-        <MedicalDisclaimer />
-      </section>
+        {/* CTA */}
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
+          <div className="rounded-3xl bg-slate-900 text-white p-8 sm:p-12 text-center">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+              오늘이 D+며칠인지부터 시작합니다
+            </h2>
+            <p className="text-sm text-white/70 mt-3 max-w-lg mx-auto leading-relaxed">
+              시술명과 시술일만 등록하면 회복 곡선이 그려집니다. 첫 체크인까지 1분이면 충분합니다.
+            </p>
+            <Link href="/onboarding" className="inline-block mt-6">
+              <Button size="lg" variant="secondary" className="gap-2">
+                시작하기
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
 
-      {/* Footer */}
-      <footer className="mt-auto bg-white border-t border-slate-200/80 py-8 px-6 lg:px-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-brand-600" />
-            <span className="font-semibold text-slate-700">DermaTrace AI</span>
-            <span>© 2026 DermaTrace AI Team. All rights reserved.</span>
+          <div className="mt-6">
+            <MedicalDisclaimer />
           </div>
-          <div className="flex items-center gap-4 text-slate-500">
-            <Link href="/privacy" className="hover:text-slate-900">개인정보처리방침</Link>
-            <Link href="/terms" className="hover:text-slate-900">이용약관</Link>
-          </div>
-        </div>
-      </footer>
+
+          <p className="text-[11px] text-slate-400 text-center leading-relaxed mt-6">
+            본 서비스의 모든 데이터는 시연을 위해 임의로 생성된 더미 데이터입니다. 실제 고객의
+            시술명·시술일·방문 병원 정보는 개인정보보호법상 민감정보로 별도의 동의와 보호 조치 아래
+            처리됩니다.
+          </p>
+        </section>
+      </main>
     </div>
   );
 }

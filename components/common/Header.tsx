@@ -2,43 +2,41 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Bell, Sparkles, PlusCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bell, Sparkle } from 'lucide-react';
 
-export const Header: React.FC = () => {
+export interface HeaderProps {
+  /** 오늘 화면 상단에 D+N을 크게 보여주기 위해 페이지가 넘겨준다 */
+  title?: string;
+  subtitle?: string;
+  hasAlert?: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({ title, subtitle, hasAlert = false }) => {
   return (
-    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3.5 flex items-center justify-between">
-      {/* Left Title / Breadcrumb context */}
-      <div className="flex items-center gap-3">
-        <h2 className="text-sm font-semibold text-slate-800 hidden sm:block">
-          DermaTrace <span className="text-brand-600">AI Care Platform</span>
-        </h2>
-      </div>
-
-      {/* Right Quick Actions */}
-      <div className="flex items-center gap-3 ml-auto">
-        <Link href="/analysis/new">
-          <Button size="sm" className="bg-brand-600 hover:bg-brand-700 text-white gap-1.5 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">AI 피부 분석</span>
-            <span className="sm:hidden">분석</span>
-          </Button>
+    <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-slate-200/70">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+        <Link href="/today" className="flex items-center gap-2 lg:hidden">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white">
+            <Sparkle className="w-4 h-4" />
+          </div>
+          <span className="font-extrabold text-sm tracking-tight">AfterGlow</span>
         </Link>
 
-        <Link href="/history">
-          <Button size="sm" variant="outline" className="gap-1.5 hidden md:inline-flex text-xs">
-            <PlusCircle className="w-3.5 h-3.5 text-slate-500" />
-            <span>기록 추가</span>
-          </Button>
-        </Link>
+        <div className="hidden lg:block min-w-0">
+          {title && <p className="text-sm font-bold text-slate-900 truncate">{title}</p>}
+          {subtitle && <p className="text-xs text-slate-500 truncate">{subtitle}</p>}
+        </div>
 
-        <button
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 relative transition-colors"
-          aria-label="알림"
+        <Link
+          href="/recovery#alerts"
+          className="relative p-2 -mr-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
+          aria-label={hasAlert ? '확인이 필요한 알림 있음' : '알림'}
         >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-500 ring-2 ring-white" />
-        </button>
+          <Bell className="w-5 h-5" />
+          {hasAlert && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white" />
+          )}
+        </Link>
       </div>
     </header>
   );

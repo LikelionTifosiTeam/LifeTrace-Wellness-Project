@@ -27,10 +27,11 @@ export const Button: React.FC<ButtonProps> = ({
     danger: 'bg-red-600 hover:bg-red-700 text-white shadow-sm focus:ring-red-500',
   };
 
+  // 회복 체크인은 침대에서 한 손으로 한다. 어떤 크기든 손가락으로 정확히 눌려야 한다.
   const sizes = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-4 py-2.5 text-sm gap-2',
-    lg: 'px-6 py-3.5 text-base gap-2.5 rounded-2xl',
+    sm: 'px-3 py-1.5 text-xs gap-1.5 min-h-[36px]',
+    md: 'px-4 py-2.5 text-sm gap-2 min-h-[44px]',
+    lg: 'px-6 py-3.5 text-base gap-2.5 rounded-2xl min-h-[52px]',
   };
 
   return (
