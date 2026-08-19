@@ -10,6 +10,7 @@ import { buildCurveSeries, computeRecoveryModifier, SYMPTOM_LABELS } from '@/lib
 import { getProtocol } from '@/mock/protocols';
 import { daysBetween, round, todayKST } from '@/lib/utils';
 import { ApiError, db, requireUserId } from './supabase';
+import { storageService } from './storage';
 import { fetchCurrentJourneyRow, fetchVitals } from './journey';
 import { checkinService } from './checkin';
 
@@ -36,10 +37,25 @@ export const archiveService = {
       recovery_journeys: JoinedJourney | JoinedJourney[] | null;
     };
 
+    const rows = (data ?? []) as ArchiveWithJourney[];
+
+    // 비공개 버킷 경로를 표시용 서명 URL로 바꾼다.
+    const urls = await storageService.resolveUrls(
+      rows
+        .flatMap((r) => [r.before_photo_path, r.after_photo_path])
+        .filter((p): p is string => Boolean(p))
+    );
+
     const entries: JourneyArchiveEntry[] = [];
-    for (const row of (data ?? []) as ArchiveWithJourney[]) {
+    for (const row of rows) {
       const journey = firstOf(row.recovery_journeys);
-      if (journey) entries.push(toArchiveEntry(row, journey));
+      if (!journey) continue;
+      const entry = toArchiveEntry(row, journey);
+      entry.beforePhotoUrl = row.before_photo_path
+        ? urls.get(row.before_photo_path)
+        : undefined;
+      entry.afterPhotoUrl = row.after_photo_path ? urls.get(row.after_photo_path) : undefined;
+      entries.push(entry);
     }
     return entries;
   },
@@ -103,6 +119,12 @@ export const archiveService = {
     }
     if (input.note?.trim()) parts.push(`사용자 메모: ${input.note.trim()}`);
 
+    // Before/After는 따로 찍게 하지 않는다. 여정 중 남긴 사진의 처음과 마지막을 쓴다.
+    // 같은 각도로 주 1회 찍으라고 안내해 온 이유가 여기서 회수된다.
+    const photos = checkins.filter((c) => c.photoPath);
+    const beforePath = photos[0]?.photoPath ?? null;
+    const afterPath = photos.length > 1 ? photos[photos.length - 1].photoPath ?? null : null;
+
     const { error: updateError } = await db()
       .from('recovery_journeys')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
@@ -117,6 +139,8 @@ export const archiveService = {
           user_id: userId,
           completed_day: currentDay,
           satisfaction_score: input.satisfactionScore,
+          before_photo_path: beforePath,
+          after_photo_path: afterPath,
           learned_insight: parts.join(' '),
         },
         { onConflict: 'journey_id' }

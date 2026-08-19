@@ -7,6 +7,7 @@ import { computeRecoveryModifier, detectDeviation } from '@/lib/recovery';
 import { getProtocol } from '@/mock/protocols';
 import { addDays, todayKST } from '@/lib/utils';
 import { ApiError, db, requireUserId } from './supabase';
+import { storageService } from './storage';
 import { fetchCurrentJourneyRow, fetchVitals } from './journey';
 import { daysBetween } from '@/lib/utils';
 
@@ -37,6 +38,10 @@ function symptomColumns(symptoms: Record<SymptomKey, number>) {
 }
 
 export const checkinService = {
+  /**
+   * 체크인 조회.
+   * 사진은 비공개 버킷에 있어 경로만으로는 못 띄운다. 한 번에 서명 URL로 바꿔 붙인다.
+   */
   async getCheckins(): Promise<DailyCheckin[]> {
     const userId = await requireUserId();
     const journeyRow = await fetchCurrentJourneyRow(userId);
@@ -46,7 +51,12 @@ export const checkinService = {
       .eq('journey_id', journeyRow.id)
       .order('day', { ascending: true });
     if (error) throw new ApiError('QUERY_FAILED', '기록을 불러오지 못했습니다.');
-    return ((data ?? []) as DailyCheckinRow[]).map((r) => toCheckin(r));
+
+    const rows = (data ?? []) as DailyCheckinRow[];
+    const urls = await storageService.resolveUrls(
+      rows.map((r) => r.photo_path).filter((p): p is string => Boolean(p))
+    );
+    return rows.map((r) => toCheckin(r, r.photo_path ? urls.get(r.photo_path) : undefined));
   },
 
   async submitCheckin(input: CheckinInput): Promise<CheckinResult> {

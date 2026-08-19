@@ -165,6 +165,18 @@ export default function JournalPage() {
                     ))}
                   </ul>
 
+                  {c.photoUrl && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={c.photoUrl}
+                        alt={`D+${c.day}에 기록한 사진`}
+                        loading="lazy"
+                        className="w-full max-w-[220px] aspect-[4/5] object-cover rounded-xl border border-slate-200"
+                      />
+                    </div>
+                  )}
+
                   {c.moodNote && (
                     <p className="text-xs text-slate-600 leading-relaxed mt-3 pt-3 border-t border-slate-100">
                       “{c.moodNote}”
@@ -206,23 +218,41 @@ export default function JournalPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-3">
-                    {(
-                      [
-                        ['시술 전', a.beforePhotoUrl],
-                        [`D+${a.completedDay}`, a.afterPhotoUrl],
-                      ] as const
-                    ).map(([label, url]) => (
-                      <div
-                        key={label}
-                        className="aspect-[4/5] rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400"
-                      >
-                        <Camera className="w-5 h-5 mb-1" />
-                        <span className="text-[11px] font-medium">{label}</span>
-                        {!url && <span className="text-[10px] mt-0.5">사진 없음</span>}
-                      </div>
-                    ))}
-                  </div>
+                  {a.beforePhotoUrl || a.afterPhotoUrl ? (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {(
+                        [
+                          ['처음 기록', a.beforePhotoUrl],
+                          ['마지막 기록', a.afterPhotoUrl],
+                        ] as const
+                      ).map(([label, url]) => (
+                        <figure key={label} className="m-0">
+                          {url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={url}
+                              alt={`${a.procedureName} ${label} 사진`}
+                              loading="lazy"
+                              className="w-full aspect-[4/5] object-cover rounded-xl border border-slate-200"
+                            />
+                          ) : (
+                            <div className="w-full aspect-[4/5] rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                              <Camera className="w-5 h-5" />
+                            </div>
+                          )}
+                          <figcaption className="text-[11px] text-slate-500 text-center mt-1.5">
+                            {label}
+                          </figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-2 text-xs text-slate-400 mt-3 p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                      <Camera className="w-4 h-4 shrink-0" />
+                      이 여정에는 사진 기록이 없습니다. 체크인에서 같은 각도로 남기면 여기에 비교
+                      사진이 만들어집니다.
+                    </p>
+                  )}
 
                   <div className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-brand-50/70 border border-brand-100">
                     <Lightbulb className="w-4 h-4 text-brand-600 shrink-0 mt-0.5" />

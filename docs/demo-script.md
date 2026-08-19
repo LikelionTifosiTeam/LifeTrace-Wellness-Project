@@ -10,10 +10,13 @@
 1. `demo@afterglow.kr` 계정의 **오늘 체크인이 비어 있어야** 합니다. 이미 기록했다면 아래 SQL로 초기화합니다.
 
 ```sql
-delete from public.clinic_responses where alert_id in (select id from public.recovery_alerts where day = 12);
-delete from public.recovery_alerts where day = 12;
-delete from public.daily_checkins where day = 12;
+delete from public.clinic_responses where alert_id in (select id from public.recovery_alerts where day >= 12);
+delete from public.recovery_alerts where day >= 12;
+delete from public.daily_checkins where day >= 12;
+select public.rebase_demo_data();
 ```
+
+마지막 줄이 시술일을 **KST 오늘 기준 D+12**로 되돌립니다. 촬영일이 언제든 화면은 항상 D+12에서 시작합니다.
 
 2. 브라우저 시크릿 창 2개를 준비합니다. (창 A = 사용자, 창 B = 클리닉)
    전환 시 로그인 대기를 줄일 수 있고, 편집에서 컷 전환이 깔끔해집니다.

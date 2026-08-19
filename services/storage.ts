@@ -38,4 +38,27 @@ export const storageService = {
     const { data: signed } = await db().storage.from(BUCKET).createSignedUrl(path, 60 * 60);
     return { url: signed?.signedUrl ?? '', path };
   },
+
+  /**
+   * 저장된 경로들을 화면에서 쓸 수 있는 서명 URL로 바꾼다.
+   *
+   * 버킷이 비공개라 경로만으로는 이미지를 띄울 수 없다. 한 번에 묶어 요청해
+   * 사진이 여러 장인 기록 화면에서 왕복이 늘어나지 않게 한다.
+   * 실패한 경로는 조용히 빠진다 — 사진 하나 때문에 화면 전체가 막히면 안 된다.
+   */
+  async resolveUrls(paths: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    const unique = Array.from(new Set(paths.filter(Boolean)));
+    if (unique.length === 0) return result;
+
+    const { data, error } = await db()
+      .storage.from(BUCKET)
+      .createSignedUrls(unique, 60 * 60);
+    if (error || !data) return result;
+
+    data.forEach((item) => {
+      if (item.signedUrl && item.path) result.set(item.path, item.signedUrl);
+    });
+    return result;
+  },
 };

@@ -135,7 +135,9 @@ export interface DailyCheckin {
   date: string;                  // YYYY-MM-DD
   day: number;                   // D+N
   symptoms: Record<SymptomKey, number>; // 0~4
-  /** 선택 입력. 없어도 체크인은 완결된다. */
+  /** 선택 입력. 없어도 체크인은 완결된다. 비공개 버킷의 저장 경로다. */
+  photoPath?: string;
+  /** 화면 표시용 서명 URL. 조회 시점에 채워진다. */
   photoUrl?: string;
   moodNote?: string;
   /** 규칙 준수 자가 보고 */
